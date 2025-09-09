@@ -11,6 +11,7 @@ import {
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import HomeIcon from '@/assets/images/home.svg';
 import HomeGreyIcon from '@/assets/images/home grey.svg';
 import JournalIcon from '@/assets/images/journal.svg';
@@ -21,6 +22,7 @@ import ProfileIcon from '@/assets/images/Profile.svg';
 import ProfileGreyIcon from '@/assets/images/Profile-grey.svg';
 
 export default function CommunityScreen() {
+  const router = useRouter();
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -127,7 +129,7 @@ export default function CommunityScreen() {
                 Weather based advisories
               </ThemedText>
               <ThemedText style={styles.recommendedSubtitle}>
-                "Heatwave alert – provide shade and water continuously"
+                "Heatwave alert provide shade and water continuously"
               </ThemedText>
               <ThemedText style={styles.recommendedMeta}>📖 READ</ThemedText>
             </View>
@@ -146,9 +148,9 @@ export default function CommunityScreen() {
         <TouchableOpacity style={styles.tabItem}>
           <JournalGreyIcon width={24} height={24} />
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.tabItem, styles.activeTab]}>
-          <Image source={require('@/assets/images/cam.png')} style={styles.pngIcon} />
-        </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/(tabs)/camera")} style={[styles.tabItem, styles.activeTab]}>
+            <Image source={require('@/assets/images/cam.png')} style={styles.pngIcon} />
+          </TouchableOpacity>
         <TouchableOpacity style={styles.tabItem}>
           <CommunityGreyIcon width={24} height={24} />
         </TouchableOpacity>

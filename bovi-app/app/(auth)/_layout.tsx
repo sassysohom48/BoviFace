@@ -7,27 +7,29 @@ export default function AuthLayout() {
       <Stack.Screen
         name="login"
         options={{
-          title: 'Login',
-          headerLeft: () => (
-            <Link href="/welcome" asChild>
-              <TouchableOpacity accessibilityRole="button" style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
-                <Text style={{ fontSize: 18 }}>←</Text>
-              </TouchableOpacity>
-            </Link>
-          ),
+          title: 'Sign In',
+          headerShown: false, // Hide header for cleaner look
         }}
       />
       <Stack.Screen
         name="signup"
         options={{
-          title: 'Create account',
-          headerLeft: () => (
-            <Link href="/welcome" asChild>
-              <TouchableOpacity accessibilityRole="button" style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
-                <Text style={{ fontSize: 18 }}>←</Text>
-              </TouchableOpacity>
-            </Link>
-          ),
+          title: 'Sign Up',
+          headerShown: false, // Hide header for cleaner look
+        }}
+      />
+      <Stack.Screen
+        name="otp"
+        options={{
+          title: 'Verify OTP',
+          headerShown: false, // Hide header for cleaner look
+        }}
+      />
+      <Stack.Screen
+        name="user-details"
+        options={{
+          title: 'Complete Profile',
+          headerShown: false, // Hide header for cleaner look
         }}
       />
     </Stack>

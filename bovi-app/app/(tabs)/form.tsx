@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView, Alert } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { router } from "expo-router";
+import { supabase } from "../../utils/supabaseClient";
 
 export default function FormScreen() {
   const route = useRoute();
@@ -40,10 +41,61 @@ export default function FormScreen() {
 
   const handleSubmit = () => {
     // Validate required fields
-    if (!name.trim() || !age.trim()) {
-      Alert.alert("Required Fields", "Please fill in the cattle name and age.");
-      return;
-    }
+    const handleSubmit = async () => {
+      if (!name.trim() || !age.trim()) {
+        Alert.alert("Required Fields", "Please fill in the cattle name and age.");
+        return;
+      }
+    
+      if (!cattleUri || !muzzleUri) {
+        Alert.alert("Missing Photos", "Photo data is missing. Please go back and take photos again.");
+        return;
+      }
+    
+      try {
+        // Insert into Supabase
+        const { data, error } = await supabase.from("cattle").insert([
+          {
+            name: name.trim(),
+            age: parseInt(age),
+            cattle_image_url: cattleUri,
+            muzzle_image_url: muzzleUri,
+          },
+        ]);
+    
+        if (error) {
+          console.error("Supabase insert error:", error);
+          Alert.alert("Error", "Failed to save data. Please try again.");
+          return;
+        }
+    
+        console.log("Saved to Supabase:", data);
+    
+        // Navigate to ResultScreen (you can still pass predictions)
+        const mockPredictions = [
+          { breed: "Holstein Friesian", confidence: 0.85 },
+          { breed: "Jersey", confidence: 0.72 },
+          { breed: "Angus", confidence: 0.68 },
+        ];
+    
+        router.push({
+          pathname: "/(tabs)/result",
+          params: {
+            cattleUri,
+            muzzleUri,
+            name,
+            age,
+            breed,
+            weight,
+            location,
+            predictions: JSON.stringify(mockPredictions),
+          },
+        });
+      } catch (err) {
+        console.error(err);
+        Alert.alert("Error", "Something went wrong!");
+      }
+    };
 
     // Check if photos are still available
     if (!cattleUri || !muzzleUri) {
@@ -80,7 +132,7 @@ export default function FormScreen() {
   if (!cattleUri || !muzzleUri) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <Text style={styles.title}>📷 Photos Required</Text>
+        <Text style={styles.title}>Photos Required</Text>
         <Text style={styles.errorText}>
           Please take both cattle and muzzle photos before proceeding to this form.
         </Text>
@@ -88,7 +140,7 @@ export default function FormScreen() {
           style={styles.button} 
           onPress={() => router.back()}
         >
-          <Text style={styles.buttonText}>← Back to Camera</Text>
+          <Text style={styles.buttonText}>Back to Camera</Text>
         </TouchableOpacity>
       </View>
     );
@@ -157,14 +209,14 @@ export default function FormScreen() {
       />
 
       <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>🔍 Analyze Cattle</Text>
+        <Text style={styles.buttonText}>Analyze Cattle</Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.backButton} 
-        onPress={() => router.back()}
+        onPress={() => router.push("/(tabs)/camera")}
       >
-        <Text style={styles.backButtonText}>← Back to Camera</Text>
+        <Text style={styles.backButtonText}>Back to Camera</Text>
       </TouchableOpacity>
     </ScrollView>
   );

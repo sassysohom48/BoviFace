@@ -1,0 +1,526 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Alert,
+  RefreshControl,
+  Modal,
+  ScrollView,
+} from 'react-native';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { storageService, SavedAnalysis } from '../../utils/storageService';
+import { router } from 'expo-router';
+
+// Using SavedAnalysis from storageService
+
+export default function JournalScreen() {
+  const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<SavedAnalysis | null>(null);
+
+  useEffect(() => {
+    loadAnalyses();
+  }, []);
+
+  const loadAnalyses = async () => {
+    try {
+      const savedAnalyses = await storageService.getAllAnalyses();
+      setAnalyses(savedAnalyses);
+    } catch (error) {
+      console.error('Error loading analyses:', error);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadAnalyses();
+    setRefreshing(false);
+  };
+
+  const deleteAnalysis = async (analysisId: string) => {
+    Alert.alert(
+      'Delete Analysis',
+      'Are you sure you want to delete this analysis?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await storageService.deleteAnalysis(analysisId);
+              if (success) {
+                await loadAnalyses(); // Reload the list
+                Alert.alert('Success', 'Analysis deleted successfully');
+              } else {
+                Alert.alert('Error', 'Failed to delete analysis');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete analysis');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const formatDate = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const renderAnalysisItem = ({ item }: { item: SavedAnalysis }) => {
+    const topPrediction = item.predictions[0];
+    
+    return (
+      <TouchableOpacity
+        style={styles.analysisCard}
+        onPress={() => setSelectedAnalysis(item)}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.cattleInfo}>
+            <Text style={styles.cattleName}>{item.cattleInfo.name}</Text>
+            <Text style={styles.cattleDetails}>
+              {item.cattleInfo.age} months • {item.cattleInfo.location || 'Unknown location'}
+            </Text>
+          </View>
+          <Text style={styles.timestamp}>{formatDate(item.timestamp)}</Text>
+        </View>
+
+        <View style={styles.cardContent}>
+          <View style={styles.imageContainer}>
+            <Image source={{ uri: item.images.cattleUri }} style={styles.thumbnail} />
+            <Text style={styles.imageLabel}>Overall</Text>
+          </View>
+          
+          <View style={styles.predictionInfo}>
+            <Text style={styles.predictionLabel}>Top Prediction</Text>
+            <Text style={styles.predictionBreed}>{topPrediction.breed}</Text>
+            <View style={styles.confidenceBar}>
+              <View 
+                style={[
+                  styles.confidenceFill, 
+                  { width: `${topPrediction.confidence * 100}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.confidenceText}>
+              {(topPrediction.confidence * 100).toFixed(1)}% confidence
+            </Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => deleteAnalysis(item.id)}
+        >
+          <Text style={styles.deleteButtonText}>🗑️</Text>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderDetailModal = () => {
+    if (!selectedAnalysis) return null;
+
+    return (
+      <Modal
+        visible={!!selectedAnalysis}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <ThemedView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <ThemedText type="title" style={styles.modalTitle}>
+              Analysis Details
+            </ThemedText>
+            <TouchableOpacity
+              onPress={() => setSelectedAnalysis(null)}
+              style={styles.closeButton}
+            >
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {/* Cattle Information */}
+            <View style={styles.detailSection}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                Cattle Information
+              </ThemedText>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Name:</Text>
+                <Text style={styles.detailValue}>{selectedAnalysis.cattleInfo.name}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Age:</Text>
+                <Text style={styles.detailValue}>{selectedAnalysis.cattleInfo.age} months</Text>
+              </View>
+              {selectedAnalysis.cattleInfo.breed && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Breed:</Text>
+                  <Text style={styles.detailValue}>{selectedAnalysis.cattleInfo.breed}</Text>
+                </View>
+              )}
+              {selectedAnalysis.cattleInfo.weight && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Weight:</Text>
+                  <Text style={styles.detailValue}>{selectedAnalysis.cattleInfo.weight} kg</Text>
+                </View>
+              )}
+              {selectedAnalysis.cattleInfo.location && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Location:</Text>
+                  <Text style={styles.detailValue}>{selectedAnalysis.cattleInfo.location}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Images */}
+            <View style={styles.detailSection}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                Captured Images
+              </ThemedText>
+              <View style={styles.imageRow}>
+                <View style={styles.imageContainer}>
+                  <Image 
+                    source={{ uri: selectedAnalysis.images.cattleUri }} 
+                    style={styles.detailImage} 
+                  />
+                  <Text style={styles.imageLabel}>Overall View</Text>
+                </View>
+                <View style={styles.imageContainer}>
+                  <Image 
+                    source={{ uri: selectedAnalysis.images.muzzleUri }} 
+                    style={styles.detailImage} 
+                  />
+                  <Text style={styles.imageLabel}>Muzzle View</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Predictions */}
+            <View style={styles.detailSection}>
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                Breed Predictions
+              </ThemedText>
+              {selectedAnalysis.predictions.map((prediction, index) => (
+                <View key={index} style={styles.predictionItem}>
+                  <View style={styles.predictionHeader}>
+                    <Text style={styles.predictionRank}>#{index + 1}</Text>
+                    <Text style={styles.predictionBreed}>{prediction.breed}</Text>
+                  </View>
+                  <View style={styles.confidenceBar}>
+                    <View 
+                      style={[
+                        styles.confidenceFill, 
+                        { width: `${prediction.confidence * 100}%` }
+                      ]} 
+                    />
+                  </View>
+                  <Text style={styles.confidenceText}>
+                    {(prediction.confidence * 100).toFixed(1)}% confidence
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </ThemedView>
+      </Modal>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <ThemedText type="title" style={styles.title}>Analysis Journal</ThemedText>
+        <ThemedText style={styles.subtitle}>
+          {analyses.length} saved analyses
+        </ThemedText>
+      </View>
+
+      {analyses.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyIcon}>📋</Text>
+          <ThemedText type="subtitle" style={styles.emptyTitle}>
+            No Saved Analyses
+          </ThemedText>
+          <ThemedText style={styles.emptySubtitle}>
+            Your saved cattle analyses will appear here
+          </ThemedText>
+          <TouchableOpacity
+            style={styles.startAnalysisButton}
+            onPress={() => router.push('/(tabs)/camera')}
+          >
+            <Text style={styles.startAnalysisText}>Start New Analysis</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={analyses}
+          renderItem={renderAnalysisItem}
+          keyExtractor={(item) => item.id}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+
+      {renderDetailModal()}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    backgroundColor: '#4CAF50',
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#fff',
+    opacity: 0.9,
+  },
+  listContainer: {
+    padding: 20,
+  },
+  analysisCard: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 15,
+  },
+  cattleInfo: {
+    flex: 1,
+  },
+  cattleName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  cattleDetails: {
+    fontSize: 14,
+    color: '#666',
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'right',
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  imageContainer: {
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  thumbnail: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  imageLabel: {
+    fontSize: 10,
+    color: '#666',
+    marginTop: 4,
+  },
+  predictionInfo: {
+    flex: 1,
+  },
+  predictionLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  predictionBreed: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  confidenceBar: {
+    height: 6,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 3,
+    marginBottom: 4,
+  },
+  confidenceFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 3,
+  },
+  confidenceText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  deleteButton: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    padding: 8,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  startAnalysisButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 12,
+  },
+  startAnalysisText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalContainer: {
+    flex: 1,
+    paddingTop: 60,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  closeButton: {
+    padding: 8,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  modalContent: {
+    flex: 1,
+    padding: 20,
+  },
+  detailSection: {
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+  },
+  imageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  detailImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  predictionItem: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+  },
+  predictionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  predictionRank: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginRight: 10,
+  },
+});

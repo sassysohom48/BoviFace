@@ -1,102 +1,52 @@
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useRouter, Link } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
 export default function SignupScreen() {
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  function isValidEmail(value: string) {
-    return /.+@.+\..+/.test(value);
-  }
-
   async function onSubmit() {
-    if (name.trim().length < 2) {
-      Alert.alert('Invalid name', 'Please enter your name.');
-      return;
-    }
-    if (!isValidEmail(email)) {
-      Alert.alert('Invalid email', 'Please enter a valid email address.');
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert('Weak password', 'Password must be at least 6 characters.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert('Password mismatch', 'Passwords do not match.');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      // Simulate API
-      await new Promise((r) => setTimeout(r, 800));
-      router.replace('/(auth)/purpose');
-    } finally {
-      setSubmitting(false);
-    }
+    if (phone.trim().length < 10) return;
+    setSubmitting(true);
+    router.push('/(auth)/otp');
+    setSubmitting(false);
   }
 
   return (
     <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', default: undefined })} style={{ flex: 1 }}>
       <ParallaxContainer>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ThemedText style={styles.backButtonText}>←</ThemedText>
+          </TouchableOpacity>
+        </View>
+        
         <ThemedView style={styles.headerContainer}>
-          <ThemedText type="title">Create account</ThemedText>
-          <ThemedText type="default">Join to continue</ThemedText>
+          <ThemedText type="title">Sign up with phone</ThemedText>
+          <ThemedText type="default">We'll send an OTP</ThemedText>
         </ThemedView>
 
         <View style={styles.formContainer}>
           <TextInput
-            placeholder="Full name"
+            placeholder="Phone number"
             placeholderTextColor="#999"
-            autoCapitalize="words"
-            value={name}
-            onChangeText={setName}
-            style={styles.input}
-          />
-          <TextInput
-            placeholder="Email"
-            placeholderTextColor="#999"
-            keyboardType="email-address"
+            keyboardType="phone-pad"
             autoCapitalize="none"
-            autoCorrect={false}
-            value={email}
-            onChangeText={setEmail}
-            style={styles.input}
-          />
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor="#999"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            style={styles.input}
-          />
-          <TextInput
-            placeholder="Confirm password"
-            placeholderTextColor="#999"
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            value={phone}
+            onChangeText={setPhone}
             style={styles.input}
           />
 
-          <TouchableOpacity onPress={onSubmit} disabled={submitting} style={[styles.button, submitting && { opacity: 0.6 }]}>
-            <ThemedText type="defaultSemiBold" style={{ textAlign: 'center' }}>{submitting ? 'Creating…' : 'Create account'}</ThemedText>
+          <TouchableOpacity onPress={onSubmit} disabled={submitting || phone.trim().length < 10} style={[styles.button, (submitting || phone.trim().length < 10) && { opacity: 0.6 }]}>
+            <ThemedText type="defaultSemiBold" style={{ textAlign: 'center' }}>{submitting ? 'Sending…' : 'Send OTP'}</ThemedText>
           </TouchableOpacity>
 
-          <ThemedText style={{ textAlign: 'center', marginTop: 8 }}>
-            Already have an account? <Link href="/(auth)/login">Log in</Link>
-          </ThemedText>
-          <ThemedText style={{ textAlign: 'center', marginTop: 8 }}>
-            Prefer phone? <Link href="/(auth)/phone">Use phone instead</Link>
+          <ThemedText style={{ textAlign: 'center', marginTop: 16 }}>
+            Already have an account? <Link href="/(auth)/login" style={styles.link}>Sign in</Link>
           </ThemedText>
         </View>
       </ParallaxContainer>
@@ -109,6 +59,21 @@ function ParallaxContainer({ children }: { children: React.ReactNode }) {
 }
 
 const styles = StyleSheet.create({
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingBottom: 10,
+  },
+  backButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  backButtonText: {
+    fontSize: 24,
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
   headerContainer: {
     gap: 4,
     marginTop: 24,
@@ -131,6 +96,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     paddingVertical: 14,
     borderRadius: 10,
+  },
+  link: {
+    color: '#007AFF',
+    fontWeight: '600',
   },
 });
 

@@ -1,7 +1,8 @@
-import React from "react";
-import { View, Text, Image, FlatList, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
+import React, { useState } from "react";
+import { View, Text, Image, FlatList, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { router } from "expo-router";
+import { storageService } from '../../utils/storageService';
 
 export default function ResultScreen() {
   const route = useRoute();
@@ -31,18 +32,51 @@ export default function ResultScreen() {
   // Parse predictions from JSON string
   const parsedPredictions = JSON.parse(predictions || "[]") as { breed: string; confidence: number }[];
 
-  const handleSaveResult = () => {
+  // Modal state for breed info
+  const [selectedBreed, setSelectedBreed] = useState<{ breed: string; confidence: number } | null>(null);
+
+  const handleSaveResult = async () => {
     Alert.alert(
       "Save Result", 
-      "Would you like to save this cattle identification result?",
+      "Would you like to save this cattle identification result to your journal?",
       [
         { text: "Cancel", style: "cancel" },
         { 
           text: "Save", 
-          onPress: () => {
-            // Here you would save to local storage or send to backend
-            console.log("Saving result:", { name, age, breed, weight, location, parsedPredictions });
-            Alert.alert("Success", "Cattle identification result saved!");
+          onPress: async () => {
+            try {
+              await storageService.saveAnalysis({
+                cattleInfo: {
+                  name,
+                  age,
+                  breed,
+                  weight,
+                  location
+                },
+                images: {
+                  cattleUri,
+                  muzzleUri
+                },
+                predictions: parsedPredictions
+              });
+              
+              Alert.alert(
+                "Success", 
+                "Cattle identification result saved to your journal!",
+                [
+                  {
+                    text: "View Journal",
+                    onPress: () => router.push("/(tabs)/journal")
+                  },
+                  {
+                    text: "OK",
+                    style: "default"
+                  }
+                ]
+              );
+            } catch (error) {
+              Alert.alert("Error", "Failed to save analysis. Please try again.");
+            }
           }
         }
       ]
@@ -123,7 +157,7 @@ export default function ResultScreen() {
             </Text>
             <TouchableOpacity
               style={styles.infoButton}
-              onPress={() => Alert.alert("Breed Info", `Learn more about ${item.breed} breed characteristics.`)}
+              onPress={() => setSelectedBreed(item)}
             >
               <Text style={styles.infoText}>More Info</Text>
             </TouchableOpacity>
@@ -151,6 +185,41 @@ export default function ResultScreen() {
           <Text style={styles.homeText}>Back to Home</Text>
         </TouchableOpacity>
       </View>
+      {/* Breed Info Modal */}
+      <Modal
+        visible={!!selectedBreed}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedBreed(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{selectedBreed?.breed}</Text>
+              <TouchableOpacity onPress={() => setSelectedBreed(null)} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSubtitle}>
+              Confidence: {(selectedBreed?.confidence ? selectedBreed.confidence * 100 : 0).toFixed(1)}%
+            </Text>
+            <View style={styles.modalBody}>
+              <Text style={styles.modalText}>
+                • Origin: Details about typical origin and distribution.
+              </Text>
+              <Text style={styles.modalText}>
+                • Traits: Coat, horns, temperament, and productivity.
+              </Text>
+              <Text style={styles.modalText}>
+                • Care: Feeding, housing, and common health considerations.
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.modalPrimary} onPress={() => setSelectedBreed(null)}>
+              <Text style={styles.modalPrimaryText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -326,6 +395,65 @@ const styles = StyleSheet.create({
   homeText: {
     color: "#666",
     fontSize: 16,
+    textAlign: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  modalContent: {
+    width: "100%",
+    backgroundColor: "#1a1a1a",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#333",
+    padding: 16,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  modalTitle: {
+    color: "#4CAF50",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  closeButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#333",
+    borderRadius: 8,
+  },
+  closeButtonText: {
+    color: "#fff",
+    fontSize: 14,
+  },
+  modalSubtitle: {
+    color: "#ccc",
+    marginBottom: 12,
+  },
+  modalBody: {
+    gap: 6,
+    marginBottom: 16,
+  },
+  modalText: {
+    color: "#eee",
+    fontSize: 14,
+  },
+  modalPrimary: {
+    backgroundColor: "#4CAF50",
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  modalPrimaryText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
     textAlign: "center",
   },
 });

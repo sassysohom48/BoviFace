@@ -51,7 +51,7 @@ export default function ResultScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>🔍 Analysis Complete!</Text>
+      <Text style={styles.title}>Analysis Complete!</Text>
 
       {/* Cattle Information */}
       <View style={styles.infoCard}>
@@ -125,7 +125,7 @@ export default function ResultScreen() {
               style={styles.infoButton}
               onPress={() => Alert.alert("Breed Info", `Learn more about ${item.breed} breed characteristics.`)}
             >
-              <Text style={styles.infoText}>ℹ️ More Info</Text>
+              <Text style={styles.infoText}>More Info</Text>
             </TouchableOpacity>
           </View>
         ))}
@@ -134,21 +134,21 @@ export default function ResultScreen() {
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
         <TouchableOpacity style={styles.saveButton} onPress={handleSaveResult}>
-          <Text style={styles.saveButtonText}>💾 Save Result</Text>
+          <Text style={styles.saveButtonText}>Save Result</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.newAnalysisButton} 
           onPress={() => router.push("/(tabs)/camera")}
         >
-          <Text style={styles.newAnalysisText}>📸 New Analysis</Text>
+          <Text style={styles.newAnalysisText}>New Analysis</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.homeButton} 
           onPress={() => router.push("/(tabs)")}
         >
-          <Text style={styles.homeText}>🏠 Back to Home</Text>
+          <Text style={styles.homeText}>Back to Home</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

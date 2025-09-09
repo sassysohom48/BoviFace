@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView, Alert } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { router } from "expo-router";
@@ -7,11 +7,14 @@ export default function FormScreen() {
   const route = useRoute();
   const navigation = useNavigation();
 
-  // get photo URIs from CameraScreen
-  const { cattleUri, muzzleUri } = route.params as {
-    cattleUri: string;
-    muzzleUri: string;
-  };
+  // Safely get photo URIs from CameraScreen with fallback
+  const params = route.params as {
+    cattleUri?: string;
+    muzzleUri?: string;
+  } | undefined;
+
+  const cattleUri = params?.cattleUri;
+  const muzzleUri = params?.muzzleUri;
 
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
@@ -19,10 +22,32 @@ export default function FormScreen() {
   const [weight, setWeight] = useState("");
   const [location, setLocation] = useState("");
 
+  // Check if required parameters are missing
+  useEffect(() => {
+    if (!cattleUri || !muzzleUri) {
+      Alert.alert(
+        "Missing Photos", 
+        "Please take photos first before filling out the form.",
+        [
+          {
+            text: "Go Back",
+            onPress: () => router.back()
+          }
+        ]
+      );
+    }
+  }, [cattleUri, muzzleUri]);
+
   const handleSubmit = () => {
     // Validate required fields
     if (!name.trim() || !age.trim()) {
       Alert.alert("Required Fields", "Please fill in the cattle name and age.");
+      return;
+    }
+
+    // Check if photos are still available
+    if (!cattleUri || !muzzleUri) {
+      Alert.alert("Missing Photos", "Photo data is missing. Please go back and take photos again.");
       return;
     }
 
@@ -51,9 +76,27 @@ export default function FormScreen() {
     });
   };
 
+  // Show loading/fallback if photos are missing
+  if (!cattleUri || !muzzleUri) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Text style={styles.title}>📷 Photos Required</Text>
+        <Text style={styles.errorText}>
+          Please take both cattle and muzzle photos before proceeding to this form.
+        </Text>
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={() => router.back()}
+        >
+          <Text style={styles.buttonText}>← Back to Camera</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>🐄 Cattle Information</Text>
+      <Text style={styles.title}>Cattle Information</Text>
       
       {/* Photo Preview */}
       <View style={styles.photoPreview}>
@@ -133,12 +176,23 @@ const styles = StyleSheet.create({
     backgroundColor: "black", 
     padding: 20,
   },
+  centerContent: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
   title: { 
     color: "white", 
     fontSize: 24, 
     marginBottom: 20, 
     textAlign: "center",
     fontWeight: "bold",
+  },
+  errorText: {
+    color: "#ff6b6b",
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 30,
+    paddingHorizontal: 20,
   },
   photoPreview: {
     flexDirection: "row",

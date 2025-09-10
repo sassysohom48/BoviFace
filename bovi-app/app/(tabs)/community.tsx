@@ -142,19 +142,34 @@ export default function CommunityScreen() {
 
       {/* Tab Bar */}
       <View style={styles.tabBar}>
-        <TouchableOpacity style={styles.tabItem}>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => router.push('/(tabs)/community')}
+        >
           <HomeGreyIcon width={24} height={24} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => router.push('/(tabs)/journal')}
+        >
           <JournalGreyIcon width={24} height={24} />
         </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/camera")} style={[styles.tabItem, styles.activeTab]}>
-            <Image source={require('@/assets/images/cam.png')} style={styles.pngIcon} />
-          </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
-          <CommunityGreyIcon width={24} height={24} />
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => router.push('/(tabs)/camera')}
+        >
+          <Image source={require('@/assets/images/cam.png')} style={styles.pngIcon} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
+        <TouchableOpacity 
+          style={[styles.tabItem, styles.activeTab]}
+          onPress={() => router.push('/(tabs)/community')}
+        >
+          <CommunityIcon width={24} height={24} />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => router.push('/(tabs)/profile')}
+        >
           <ProfileGreyIcon width={24} height={24} />
         </TouchableOpacity>
       </View>
@@ -165,7 +180,7 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#000000',
   },
   scrollView: {
     flex: 1,
@@ -175,6 +190,8 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 20,
     position: 'relative',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
   },
   headerTitle: {
     color: '#ffffff',
@@ -195,6 +212,23 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+  },
+  apiTestButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  apiTestButtonDisabled: {
+    opacity: 0.6,
+  },
+  apiTestButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   weeklyTipsCard: {
     borderRadius: 12,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,15 +10,25 @@ import {
   RefreshControl,
   Modal,
   ScrollView,
+  SafeAreaView,
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { storageService, SavedAnalysis } from '../../utils/storageService';
-import { router } from 'expo-router';
-
-// Using SavedAnalysis from storageService
+import { router, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import HomeIcon from '@/assets/images/home.svg';
+import HomeGreyIcon from '@/assets/images/home grey.svg';
+import JournalIcon from '@/assets/images/journal.svg';
+import JournalGreyIcon from '@/assets/images/journal-grey.svg';
+import CommunityIcon from '@/assets/images/comunity.svg';
+import CommunityGreyIcon from '@/assets/images/comunity-grey.svg';
+import ProfileIcon from '@/assets/images/Profile.svg';
+import ProfileGreyIcon from '@/assets/images/Profile-grey.svg';
 
 export default function JournalScreen() {
+  const navigation = useNavigation();
+  const router = useRouter();
   const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedAnalysis, setSelectedAnalysis] = useState<SavedAnalysis | null>(null);
@@ -27,9 +37,22 @@ export default function JournalScreen() {
     loadAnalyses();
   }, []);
 
+  // Add focus listener to refresh when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('Journal screen focused, refreshing data...');
+      loadAnalyses();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   const loadAnalyses = async () => {
     try {
+      console.log('Loading analyses from storage...');
       const savedAnalyses = await storageService.getAllAnalyses();
+      console.log('Loaded analyses:', savedAnalyses);
+      console.log('Analyses count:', savedAnalyses.length);
       setAnalyses(savedAnalyses);
     } catch (error) {
       console.error('Error loading analyses:', error);
@@ -123,7 +146,10 @@ export default function JournalScreen() {
 
         <TouchableOpacity
           style={styles.deleteButton}
-          onPress={() => deleteAnalysis(item.id)}
+          onPress={(e) => {
+            e.stopPropagation(); // Prevent card tap when delete is pressed
+            deleteAnalysis(item.id);
+          }}
         >
           <Text style={styles.deleteButtonText}>🗑️</Text>
         </TouchableOpacity>
@@ -242,12 +268,18 @@ export default function JournalScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <ThemedText type="title" style={styles.title}>Analysis Journal</ThemedText>
         <ThemedText style={styles.subtitle}>
           {analyses.length} saved analyses
         </ThemedText>
+        <TouchableOpacity 
+          style={styles.refreshButton}
+          onPress={loadAnalyses}
+        >
+          <Text style={styles.refreshButtonText}>Refresh</Text>
+        </TouchableOpacity>
       </View>
 
       {analyses.length === 0 ? (
@@ -279,43 +311,75 @@ export default function JournalScreen() {
         />
       )}
 
+      {/* Tab Bar */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => router.push('/(tabs)/community')}
+        >
+          <HomeGreyIcon width={24} height={24} />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabItem, styles.activeTab]}
+          onPress={() => router.push('/(tabs)/journal')}
+        >
+          <JournalIcon width={24} height={24} />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => router.push('/(tabs)/camera')}
+        >
+          <Image source={require('@/assets/images/cam.png')} style={styles.pngIcon} />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => router.push('/(tabs)/community')}
+        >
+          <CommunityGreyIcon width={24} height={24} />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => router.push('/(tabs)/profile')}
+        >
+          <ProfileGreyIcon width={24} height={24} />
+        </TouchableOpacity>
+      </View>
+
       {renderDetailModal()}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
+  container: { flex: 1, backgroundColor: "black" },
   header: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#1a1a1a',
     paddingTop: 60,
     paddingBottom: 20,
     paddingHorizontal: 20,
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 5,
+  title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 5 },
+  subtitle: { fontSize: 16, color: '#fff', opacity: 0.9 },
+  refreshButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 10,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  listContainer: {
-    padding: 20,
-  },
+  refreshButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  listContainer: { padding: 20 },
   analysisCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1a1a1a',
     borderRadius: 15,
     padding: 15,
     marginBottom: 15,
     shadowColor: '#000',
+    borderWidth: 1,
+    borderColor: '#333333',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -327,200 +391,126 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 15,
   },
-  cattleInfo: {
-    flex: 1,
-  },
-  cattleName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  cattleDetails: {
-    fontSize: 14,
-    color: '#666',
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'right',
-  },
-  cardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  imageContainer: {
-    alignItems: 'center',
-    marginRight: 15,
-  },
+  cattleInfo: { flex: 1 },
+  cattleName: { fontSize: 18, fontWeight: 'bold', color: '#ffffff', marginBottom: 4 },
+  cattleDetails: { fontSize: 14, color: '#cccccc' },
+  timestamp: { fontSize: 12, color: '#888888', textAlign: 'right' },
+  cardContent: { flexDirection: 'row', alignItems: 'center' },
+  imageContainer: { alignItems: 'center', marginRight: 15 },
   thumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#4CAF50',
+    width: 60, height: 60, borderRadius: 8, borderWidth: 2, borderColor: '#4CAF50',
   },
-  imageLabel: {
-    fontSize: 10,
-    color: '#666',
-    marginTop: 4,
-  },
-  predictionInfo: {
-    flex: 1,
-  },
-  predictionLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-  predictionBreed: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
+  imageLabel: { fontSize: 10, color: '#666', marginTop: 4 },
+  predictionInfo: { flex: 1 },
+  predictionLabel: { fontSize: 12, color: '#888888', marginBottom: 4 },
+  predictionBreed: { fontSize: 16, fontWeight: 'bold', color: '#ffffff', marginBottom: 8 },
   confidenceBar: {
-    height: 6,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 3,
-    marginBottom: 4,
+    height: 6, backgroundColor: '#f0f0f0', borderRadius: 3, marginBottom: 4,
   },
-  confidenceFill: {
-    height: '100%',
-    backgroundColor: '#4CAF50',
-    borderRadius: 3,
-  },
-  confidenceText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  deleteButton: {
-    position: 'absolute',
-    top: 15,
-    right: 15,
+  confidenceFill: { height: '100%', backgroundColor: '#4CAF50', borderRadius: 3 },
+  confidenceText: { fontSize: 12, color: '#cccccc' },
+  deleteButton: { 
+    position: 'absolute', 
+    top: 15, 
+    right: 15, 
     padding: 8,
-  },
-  deleteButtonText: {
-    fontSize: 16,
-  },
-  emptyState: {
-    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 20,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 20,
+  deleteButtonText: { 
+    fontSize: 16,
+    color: 'white',
   },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  emptyIcon: { fontSize: 64, marginBottom: 20 },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-    textAlign: 'center',
+    fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 10, textAlign: 'center',
   },
   emptySubtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 30,
+    fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 30,
   },
   startAnalysisButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 12,
+    backgroundColor: '#4CAF50', paddingHorizontal: 30, paddingVertical: 15, borderRadius: 12,
   },
-  startAnalysisText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalContainer: {
-    flex: 1,
+  startAnalysisText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  modalContainer: { 
+    flex: 1, 
     paddingTop: 60,
+    backgroundColor: '#000000',
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  closeButton: {
-    padding: 8,
-    backgroundColor: '#f0f0f0',
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: "#ffffff" },
+  closeButton: { 
+    padding: 8, 
+    backgroundColor: '#ffffff', 
     borderRadius: 20,
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 20,
-  },
-  detailSection: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
-  detailLabel: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+  closeButtonText: { fontSize: 16, color: '#000000' },
+  modalContent: { flex: 1, padding: 20 },
+  detailSection: { marginBottom: 30 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#ffffff', marginBottom: 15 },
+  detailRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
   },
-  detailValue: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '600',
-  },
-  imageRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
+  detailLabel: { fontSize: 14, color: '#cccccc', fontWeight: '500' },
+  detailValue: { fontSize: 14, color: '#ffffff', fontWeight: '600' },
+  imageRow: { flexDirection: 'row', justifyContent: 'space-around' },
   detailImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#4CAF50',
+    width: 120, height: 120, borderRadius: 10, borderWidth: 2, borderColor: '#4CAF50',
   },
   predictionItem: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 10,
-    padding: 15,
+    backgroundColor: '#1a1a1a', 
+    borderRadius: 10, 
+    padding: 15, 
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#333333',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  predictionHeader: {
+  predictionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  predictionRank: { fontSize: 14, fontWeight: 'bold', color: '#4CAF50', marginRight: 10 },
+  tabBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+    backgroundColor: '#000000',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    justifyContent: 'space-around',
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
   },
-  predictionRank: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    marginRight: 10,
+  tabItem: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  activeTab: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 20,
+  },
+  pngIcon: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
   },
 });

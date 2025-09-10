@@ -8,12 +8,22 @@ import {
   ScrollView, 
   Alert,
   TextInput,
-  Modal
+  Modal,
+  SafeAreaView,
 } from "react-native";
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../utils/supabaseClient';
+import { useRouter } from 'expo-router';
+import HomeIcon from '@/assets/images/home.svg';
+import HomeGreyIcon from '@/assets/images/home grey.svg';
+import JournalIcon from '@/assets/images/journal.svg';
+import JournalGreyIcon from '@/assets/images/journal-grey.svg';
+import CommunityIcon from '@/assets/images/comunity.svg';
+import CommunityGreyIcon from '@/assets/images/comunity-grey.svg';
+import ProfileIcon from '@/assets/images/Profile.svg';
+import ProfileGreyIcon from '@/assets/images/Profile-grey.svg';
 
 interface UserProfile {
   id: string;
@@ -29,6 +39,7 @@ interface UserProfile {
 }
 
 export default function Profile() {
+  const router = useRouter();
   const [user, setUser] = useState<UserProfile>({
     id: "1",
     name: "John Doe",
@@ -153,6 +164,14 @@ export default function Profile() {
 
   return (
     <ScrollView style={styles.container}>
+      {/* Cross Button - Top Left */}
+      <TouchableOpacity 
+        style={styles.crossButton} 
+        onPress={() => router.push("/(tabs)/community")}
+      >
+        <Text style={styles.crossButtonText}>✕</Text>
+      </TouchableOpacity>
+
       <ThemedView style={styles.header}>
         {/* Profile Image */}
         <TouchableOpacity onPress={handleImagePicker}>
@@ -216,20 +235,31 @@ export default function Profile() {
           style={styles.button} 
           onPress={() => setIsEditing(true)}
         >
-          <ThemedText style={styles.buttonText}>✏️ Edit Profile</ThemedText>
+          <ThemedText style={styles.buttonText}>Edit Profile</ThemedText>
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={[styles.button, styles.logout]} 
-          onPress={handleLogout}
+          onPress={() => router.push("/(auth)/login")}
         >
-          <ThemedText style={styles.buttonText}>🚪 Logout</ThemedText>
+          <ThemedText style={styles.buttonText}>Logout</ThemedText>
         </TouchableOpacity>
       </View>
 
       {/* Edit Profile Modal */}
       <Modal visible={isEditing} animationType="slide" presentationStyle="pageSheet">
         <ThemedView style={styles.modalContainer}>
+          {/* Cross Button */}
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={() => {
+              setIsEditing(false);
+              router.push("/(tabs)/community");
+            }}
+          >
+            <Text style={styles.closeButtonText}>✕</Text>
+          </TouchableOpacity>
+
           <ThemedText type="title" style={styles.modalTitle}>Edit Profile</ThemedText>
           
           <TextInput
@@ -285,16 +315,18 @@ export default function Profile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "black",
   },
   header: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#1a1a1a",
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
     alignItems: "center",
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333333",
   },
   avatar: {
     width: 100,
@@ -422,6 +454,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  crossButton: {
+    position: "absolute",
+    top: 60,
+    left: 20,
+    zIndex: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#666666",
+  },
+  crossButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
   modalContainer: {
     flex: 1,
     padding: 20,
@@ -461,8 +512,25 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: "#4CAF50",
   },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
+   modalButtonText: {
+     fontSize: 16,
+     fontWeight: "600",
+   },
+   closeButton: {
+     position: "absolute",
+     top: 20,
+     right: 20,
+     zIndex: 10,
+     backgroundColor: "#eee",
+     width: 35,
+     height: 35,
+     borderRadius: 20,
+     alignItems: "center",
+     justifyContent: "center",
+   },
+   closeButtonText: {
+     fontSize: 18,
+     fontWeight: "bold",
+     color: "#333",
+   },
+ });

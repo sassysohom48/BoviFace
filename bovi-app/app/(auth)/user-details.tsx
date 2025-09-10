@@ -17,9 +17,10 @@ export default function UserDetailsScreen() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
+    age: '',
+    gender: '',
     farmName: '',
     location: '',
-    phone: '', // This will be pre-filled from OTP verification
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -27,71 +28,32 @@ export default function UserDetailsScreen() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const validateForm = () => {
-    if (!formData.name.trim()) {
-      Alert.alert('Error', 'Please enter your full name');
-      return false;
-    }
-    if (!formData.farmName.trim()) {
-      Alert.alert('Error', 'Please enter your farm name');
-      return false;
-    }
-    if (!formData.location.trim()) {
-      Alert.alert('Error', 'Please enter your location');
-      return false;
-    }
-    return true;
-  };
-
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    if (!formData.name.trim()) {
+      Alert.alert('Error', 'Please enter your name');
+      return;
+    }
 
     try {
       setSubmitting(true);
       
-      // Simulate API call to save user details
+      // Simulate profile update
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // In real app, save to Supabase/backend
-      // await supabase.from('profiles').insert({
-      //   user_id: currentUser.id,
-      //   name: formData.name,
-      //   farm_name: formData.farmName,
-      //   location: formData.location,
-      //   phone: formData.phone,
-      //   created_at: new Date().toISOString()
-      // });
-
-      Alert.alert(
-        'Success!', 
-        'Your profile has been created successfully.',
-        [
-          {
-            text: 'Continue',
-            onPress: () => router.replace('/(tabs)')
-          }
-        ]
-      );
+      Alert.alert('Success', 'Profile updated! (Demo mode)');
+      
+      // Navigate to purpose screen
+      router.push('/(auth)/purpose');
       
     } catch (error) {
-      Alert.alert('Error', 'Failed to create profile. Please try again.');
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleSkip = () => {
-    Alert.alert(
-      'Skip Profile Setup',
-      'You can complete your profile later from the Profile tab.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Skip', 
-          onPress: () => router.replace('/(tabs)')
-        }
-      ]
-    );
+    router.push('/(auth)/purpose');
   };
 
   return (
@@ -99,12 +61,16 @@ export default function UserDetailsScreen() {
       behavior={Platform.select({ ios: 'padding', default: undefined })} 
       style={{ flex: 1 }}
     >
-      <ScrollView style={styles.container}>
-        <ThemedView style={styles.header}>
-          <ThemedText type="title" style={styles.title}>Complete Your Profile</ThemedText>
-          <ThemedText style={styles.subtitle}>
-            Tell us about yourself and your farm
-          </ThemedText>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ThemedText style={styles.backButtonText}>←</ThemedText>
+          </TouchableOpacity>
+        </View>
+
+        <ThemedView style={styles.headerContainer}>
+          <ThemedText type="title">Complete Your Profile</ThemedText>
+          <ThemedText type="default">Tell us about yourself</ThemedText>
         </ThemedView>
 
         <View style={styles.formContainer}>
@@ -113,71 +79,70 @@ export default function UserDetailsScreen() {
             <TextInput
               style={styles.input}
               placeholder="Enter your full name"
+              placeholderTextColor="#999"
               value={formData.name}
-              onChangeText={(text) => handleInputChange('name', text)}
-              autoCapitalize="words"
+              onChangeText={(value) => handleInputChange('name', value)}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <ThemedText style={styles.label}>Farm Name *</ThemedText>
+            <ThemedText style={styles.label}>Age</ThemedText>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your age"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+              value={formData.age}
+              onChangeText={(value) => handleInputChange('age', value)}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Gender</ThemedText>
+            <TextInput
+              style={styles.input}
+              placeholder="Male/Female/Other"
+              placeholderTextColor="#999"
+              value={formData.gender}
+              onChangeText={(value) => handleInputChange('gender', value)}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Farm Name</ThemedText>
             <TextInput
               style={styles.input}
               placeholder="Enter your farm name"
+              placeholderTextColor="#999"
               value={formData.farmName}
-              onChangeText={(text) => handleInputChange('farmName', text)}
-              autoCapitalize="words"
+              onChangeText={(value) => handleInputChange('farmName', value)}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <ThemedText style={styles.label}>Location *</ThemedText>
+            <ThemedText style={styles.label}>Location</ThemedText>
             <TextInput
               style={styles.input}
-              placeholder="City, State/Province, Country"
+              placeholder="Enter your location"
+              placeholderTextColor="#999"
               value={formData.location}
-              onChangeText={(text) => handleInputChange('location', text)}
-              autoCapitalize="words"
+              onChangeText={(value) => handleInputChange('location', value)}
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <ThemedText style={styles.label}>Phone Number</ThemedText>
-            <TextInput
-              style={[styles.input, styles.disabledInput]}
-              placeholder="Phone number from verification"
-              value={formData.phone}
-              editable={false}
-            />
-            <ThemedText style={styles.helpText}>
-              This is the phone number you verified
-            </ThemedText>
-          </View>
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={styles.skipButton} 
-            onPress={handleSkip}
+          <TouchableOpacity
+            style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+            onPress={handleSubmit}
+            disabled={submitting || !formData.name.trim()}
           >
+            <ThemedText type="defaultSemiBold" style={styles.submitButtonText}>
+              {submitting ? 'Saving...' : 'Save Profile'}
+            </ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
             <ThemedText style={styles.skipButtonText}>Skip for now</ThemedText>
           </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.submitButton, submitting && styles.submitButtonDisabled]} 
-            onPress={handleSubmit}
-            disabled={submitting}
-          >
-            <ThemedText style={styles.submitButtonText}>
-              {submitting ? 'Creating Profile...' : 'Complete Profile'}
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.footer}>
-          <ThemedText style={styles.footerText}>
-            You can update these details anytime from your profile
-          </ThemedText>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -189,29 +154,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    backgroundColor: '#4CAF50',
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
+  topBar: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingTop: 50,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
   },
-  title: {
+  backButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  backButtonText: {
     fontSize: 24,
+    color: '#007AFF',
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-    textAlign: 'center',
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.9,
-    textAlign: 'center',
+  headerContainer: {
+    paddingHorizontal: 20,
+    gap: 4,
+    marginBottom: 24,
   },
   formContainer: {
-    padding: 20,
-    gap: 20,
+    paddingHorizontal: 20,
+    gap: 16,
   },
   inputGroup: {
     gap: 8,
@@ -223,56 +189,33 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
-  },
-  disabledInput: {
-    backgroundColor: '#f8f8f8',
-    color: '#666',
-  },
-  helpText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-  buttonContainer: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  skipButton: {
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  skipButtonText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
+    backgroundColor: 'white',
   },
   submitButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    borderRadius: 10,
     alignItems: 'center',
+    marginTop: 8,
   },
   submitButtonDisabled: {
     opacity: 0.6,
   },
   submitButtonText: {
+    color: 'white',
     fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
   },
-  footer: {
-    padding: 20,
+  skipButton: {
     alignItems: 'center',
+    paddingVertical: 12,
   },
-  footerText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
+  skipButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
   },
 });

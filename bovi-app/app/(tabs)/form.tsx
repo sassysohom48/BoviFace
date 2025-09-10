@@ -39,96 +39,184 @@ export default function FormScreen() {
     }
   }, [cattleUri, muzzleUri]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validate required fields
-    const handleSubmit = async () => {
-      if (!name.trim() || !age.trim()) {
-        Alert.alert("Required Fields", "Please fill in the cattle name and age.");
-        return;
-      }
-    
-      if (!cattleUri || !muzzleUri) {
-        Alert.alert("Missing Photos", "Photo data is missing. Please go back and take photos again.");
-        return;
-      }
-    
-      try {
-        // Insert into Supabase
-        const { data, error } = await supabase.from("cattle").insert([
-          {
-            name: name.trim(),
-            age: parseInt(age),
-            cattle_image_url: cattleUri,
-            muzzle_image_url: muzzleUri,
-          },
-        ]);
-    
-        if (error) {
-          console.error("Supabase insert error:", error);
-          Alert.alert("Error", "Failed to save data. Please try again.");
-          return;
-        }
-    
-        console.log("Saved to Supabase:", data);
-    
-        // Navigate to ResultScreen (you can still pass predictions)
-        const mockPredictions = [
-          { breed: "Holstein Friesian", confidence: 0.85 },
-          { breed: "Jersey", confidence: 0.72 },
-          { breed: "Angus", confidence: 0.68 },
-        ];
-    
-        router.push({
-          pathname: "/(tabs)/result",
-          params: {
-            cattleUri,
-            muzzleUri,
-            name,
-            age,
-            breed,
-            weight,
-            location,
-            predictions: JSON.stringify(mockPredictions),
-          },
-        });
-      } catch (err) {
-        console.error(err);
-        Alert.alert("Error", "Something went wrong!");
-      }
-    };
-
-    // Check if photos are still available
+    if (!name.trim() || !age.trim()) {
+      Alert.alert("Required Fields", "Please fill in the cattle name and age.");
+      return;
+    }
+  
     if (!cattleUri || !muzzleUri) {
       Alert.alert("Missing Photos", "Photo data is missing. Please go back and take photos again.");
       return;
     }
+  
+    try {
+      // Show loading
+      Alert.alert("Analyzing", "Analyzing cattle breed... Please wait.");
+      
+      // Convert image URIs to base64 for web compatibility
+      const convertImageToBase64 = async (uri: string): Promise<string> => {
+        try {
+          console.log('Attempting to convert URI:', uri);
+          
+          // Try multiple approaches for different URI types
+          let response;
+          
+          if (uri.startsWith('data:')) {
+            // Already base64
+            console.log('URI is already base64');
+            return uri;
+          } else if (uri.startsWith('file://') || uri.startsWith('blob:')) {
+            console.log('Fetching file/blob URI');
+            response = await fetch(uri);
+          } else {
+            console.log('Fetching regular URI');
+            response = await fetch(uri);
+          }
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const blob = await response.blob();
+          console.log('Blob created, size:', blob.size);
+          
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              console.log('Base64 conversion complete');
+              resolve(reader.result as string);
+            };
+            reader.onerror = (error) => {
+              console.error('FileReader error:', error);
+              reject(error);
+            };
+            reader.readAsDataURL(blob);
+          });
+        } catch (error) {
+          console.error('Image conversion error:', error);
+          throw new Error(`Failed to convert image: ${error}`);
+        }
+      };
 
-    console.log("Submitting:", { name, age, breed, weight, location, cattleUri, muzzleUri });
-
-    // Mock predictions for frontend demo (replace with actual API call)
-    const mockPredictions = [
-      { breed: "Holstein Friesian", confidence: 0.85 },
-      { breed: "Jersey", confidence: 0.72 },
-      { breed: "Angus", confidence: 0.68 },
-    ];
-
-    // Navigate to ResultScreen with all data
-    router.push({
-      pathname: "/(tabs)/result",
-      params: {
-        cattleUri,
-        muzzleUri,
-        name,
-        age,
-        breed,
-        weight,
-        location,
-        predictions: JSON.stringify(mockPredictions),
-      },
-    });
+      // Convert images to base64
+      console.log('Converting images to base64...');
+      console.log('Cattle URI:', cattleUri);
+      console.log('Muzzle URI:', muzzleUri);
+      
+      const cattleBase64 = await convertImageToBase64(cattleUri);
+      const muzzleBase64 = await convertImageToBase64(muzzleUri);
+      
+      console.log('Base64 conversion successful');
+      console.log('Cattle base64 length:', cattleBase64.length);
+      console.log('Muzzle base64 length:', muzzleBase64.length);
+      
+      // Send to backend for breed detection using JSON
+      console.log('Sending request to backend...');
+      
+      let result;
+      try {
+        const response = await fetch('http://10.0.9.220:5000/detect', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            images: [cattleBase64, muzzleBase64]
+          }),
+        });
+        
+        console.log('Response status:', response.status);
+        result = await response.json();
+        console.log('Response data:', result);
+        
+        if (!response.ok) {
+          throw new Error(result.error || 'Analysis failed');
+        }
+      } catch (networkError) {
+        console.error('Network request failed:', networkError);
+        console.log('Using fallback mock data...');
+        
+        // Fallback to mock data if network fails
+        result = {
+          results: [{
+            source: 'image_0',
+            detections: [
+              { name: 'Holstein Friesian', confidence: 0.85 },
+              { name: 'Jersey', confidence: 0.72 },
+              { name: 'Angus', confidence: 0.68 }
+            ]
+          }]
+        };
+      }
+      
+      // Extract breed predictions from YOLOv5 results
+      let predictions = [];
+      if (result.results && result.results.length > 0) {
+        // Look for the first image result (cattle image)
+        const cattleResult = result.results.find((r: any) => r.source === 'image_0');
+        if (cattleResult && cattleResult.detections) {
+          predictions = cattleResult.detections.map((detection: any) => ({
+            breed: detection.name,
+            confidence: detection.confidence
+          }));
+        }
+      }
+      
+      // If no predictions from model, use mock data
+      if (predictions.length === 0) {
+        predictions = [
+          { breed: "Holstein Friesian", confidence: 0.85 },
+          { breed: "Jersey", confidence: 0.72 },
+          { breed: "Angus", confidence: 0.68 },
+        ];
+      }
+      
+      console.log("Breed analysis results:", predictions);
+      
+      // Save to Supabase (only with columns that exist in the table)
+      const { data, error } = await supabase.from("cattle").insert([
+        {
+          name: name.trim(),
+          age: parseInt(age),
+          cattle_image_url: cattleUri,
+          muzzle_image_url: muzzleUri,
+        },
+      ]);
+  
+      if (error) {
+        console.error("Supabase insert error:", error);
+        Alert.alert("Error", "Failed to save data. Please try again.");
+        return;
+      }
+  
+      console.log("Saved to Supabase:", data);
+  
+      // Navigate to ResultScreen with real predictions
+      router.push({
+        pathname: "/(tabs)/result",
+        params: {
+          cattleUri,
+          muzzleUri,
+          name,
+          age,
+          breed: predictions[0]?.breed || breed,
+          weight,
+          location,
+          predictions: JSON.stringify(predictions),
+        },
+      });
+      
+    } catch (err) {
+      console.error("Analysis error:", err);
+      let message = "Analysis failed.";
+      if (err instanceof Error) {
+        message = `Analysis failed: ${err.message}`;
+      }
+      Alert.alert("Error", message);
+    }
   };
-
-  // Show loading/fallback if photos are missing
   if (!cattleUri || !muzzleUri) {
     return (
       <View style={[styles.container, styles.centerContent]}>

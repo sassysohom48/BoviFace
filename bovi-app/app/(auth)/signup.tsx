@@ -1,19 +1,49 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View, Alert } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
 export default function SignupScreen() {
   const router = useRouter();
-  const [phone, setPhone] = useState('');
+  const [formData, setFormData] = useState({
+    phone: '',
+    name: '',
+    age: '',
+    gender: '',
+  });
   const [submitting, setSubmitting] = useState(false);
 
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
   async function onSubmit() {
-    if (phone.trim().length < 10) return;
-    setSubmitting(true);
-    router.push('/(auth)/otp');
-    setSubmitting(false);
+    if (formData.phone.trim().length < 10) {
+      Alert.alert('Error', 'Please enter a valid phone number');
+      return;
+    }
+
+    if (!formData.name.trim()) {
+      Alert.alert('Error', 'Please enter your name');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // Simulate OTP sending
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      Alert.alert('Success', 'OTP sent! (Demo mode)');
+      
+      // Navigate to OTP screen
+      router.push('/(auth)/otp');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to send OTP. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -32,17 +62,48 @@ export default function SignupScreen() {
 
         <View style={styles.formContainer}>
           <TextInput
-            placeholder="Phone number"
+            style={styles.input}
+            placeholder="Phone number *"
             placeholderTextColor="#999"
             keyboardType="phone-pad"
             autoCapitalize="none"
-            value={phone}
-            onChangeText={setPhone}
-            style={styles.input}
+            value={formData.phone}
+            onChangeText={(value) => handleInputChange('phone', value)}
           />
 
-          <TouchableOpacity onPress={onSubmit} disabled={submitting || phone.trim().length < 10} style={[styles.button, (submitting || phone.trim().length < 10) && { opacity: 0.6 }]}>
-            <ThemedText type="defaultSemiBold" style={{ textAlign: 'center' }}>{submitting ? 'Sending…' : 'Send OTP'}</ThemedText>
+          <TextInput
+            style={styles.input}
+            placeholder="Full Name *"
+            placeholderTextColor="#999"
+            value={formData.name}
+            onChangeText={(value) => handleInputChange('name', value)}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Age"
+            placeholderTextColor="#999"
+            keyboardType="numeric"
+            value={formData.age}
+            onChangeText={(value) => handleInputChange('age', value)}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Gender (Male/Female/Other)"
+            placeholderTextColor="#999"
+            value={formData.gender}
+            onChangeText={(value) => handleInputChange('gender', value)}
+          />
+
+          <TouchableOpacity 
+            onPress={onSubmit} 
+            disabled={submitting || formData.phone.trim().length < 10 || !formData.name.trim()} 
+            style={[styles.button, (submitting || formData.phone.trim().length < 10 || !formData.name.trim()) && { opacity: 0.6 }]}
+          >
+            <ThemedText type="defaultSemiBold" style={{ textAlign: 'center' }}>
+              {submitting ? 'Sending…' : 'Send OTP'}
+            </ThemedText>
           </TouchableOpacity>
 
           <ThemedText style={{ textAlign: 'center', marginTop: 16 }}>
@@ -102,5 +163,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-

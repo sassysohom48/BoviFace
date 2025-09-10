@@ -25,6 +25,8 @@ class StorageService {
 
   async saveAnalysis(analysis: Omit<SavedAnalysis, 'id' | 'timestamp'>): Promise<string> {
     try {
+      console.log('Starting to save analysis:', analysis);
+      
       const id = this.generateId();
       const timestamp = new Date().toISOString();
       
@@ -34,25 +36,37 @@ class StorageService {
         ...analysis
       };
 
+      console.log('Created saved analysis object:', savedAnalysis);
+
       const existingAnalyses = await this.getAllAnalyses();
+      console.log('Existing analyses count:', existingAnalyses.length);
+      
       const updatedAnalyses = [savedAnalysis, ...existingAnalyses];
+      console.log('Updated analyses count:', updatedAnalyses.length);
 
       await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAnalyses));
       
-      console.log('Analysis saved successfully:', id);
+      console.log('Analysis saved successfully to AsyncStorage:', id);
       return id;
     } catch (error) {
       console.error('Error saving analysis:', error);
-      throw new Error('Failed to save analysis');
+      throw new Error(`Failed to save analysis: ${error}`);
     }
   }
 
   async getAllAnalyses(): Promise<SavedAnalysis[]> {
     try {
+      console.log('Getting all analyses from AsyncStorage...');
       const savedAnalyses = await AsyncStorage.getItem(this.STORAGE_KEY);
+      console.log('Raw data from AsyncStorage:', savedAnalyses);
+      
       if (savedAnalyses) {
-        return JSON.parse(savedAnalyses);
+        const parsed = JSON.parse(savedAnalyses);
+        console.log('Parsed analyses:', parsed);
+        return parsed;
       }
+      
+      console.log('No saved analyses found, returning empty array');
       return [];
     } catch (error) {
       console.error('Error loading analyses:', error);

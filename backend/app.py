@@ -1,4 +1,6 @@
+import base64
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import os
 import sys
 from io import BytesIO
@@ -8,6 +10,7 @@ import requests
 import torch
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Ensure local yolov5 repo is importable for torch.hub local loading
 YV5_DIR = Path(__file__).resolve().parent / "yolov5"
@@ -17,12 +20,33 @@ if str(YV5_DIR) not in sys.path:
 # Load YOLOv5 model (custom weights)
 # Using torch.hub with source='local' avoids PyTorch 2.6 safe-unpickling issues
 model = torch.hub.load(str(YV5_DIR), "custom", path=str(Path(__file__).parent / "best_windows.pt"), source="local")
+model.conf = 0.1   # Lower confidence threshold to catch more detections
+model.iou = 0.45   # NMS IoU threshold
 model.eval()
+
+# Print model classes for debugging
+print("✅ Model loaded successfully!")
+print("Loaded model classes:", model.names)
+print("Model confidence threshold:", model.conf)
+print("Model IoU threshold:", model.iou)
 
 def run_inference_pil(image: Image.Image):
     """Run YOLOv5 inference on a PIL image and return structured detections."""
+    print(f"Running inference on image of size: {image.size}")
+    print(f"Model classes available: {model.names}")
+    
     results = model(image)  # inference
     df = results.pandas().xyxy[0]
+    
+    # Debug: Print what we detected
+    print(f"Detected {len(df)} objects")
+    if len(df) > 0:
+        print("Raw detections:")
+        for _, row in df.iterrows():
+            print(f"  - {row['name']} (confidence: {row['confidence']:.3f})")
+    else:
+        print("No detections found!")
+    
     detections = []
     for _, row in df.iterrows():
         detections.append({
@@ -53,25 +77,36 @@ def detect():
                 detections.append({"source": file.filename, "error": str(e)})
         return jsonify({"results": detections})
 
-    # Case 2: application/json with list of URLs
+    # Case 2: application/json with base64 images or URLs
     try:
         data = request.get_json(silent=True) or {}
-        image_urls = data.get("images", [])
+        images = data.get("images", [])
     except Exception:
-        image_urls = []
+        images = []
 
-    if not image_urls:
+    if not images:
         return jsonify({"error": "No images provided. Send files or JSON {images: [...]}"}), 400
 
-    for url in image_urls:
+    for i, image_data in enumerate(images):
         try:
-            response = requests.get(url, timeout=15)
-            response.raise_for_status()
-            image = Image.open(BytesIO(response.content)).convert("RGB")
+            # Check if it's a base64 image
+            if isinstance(image_data, str) and image_data.startswith('data:image'):
+                # Extract base64 data from data URL
+                header, encoded = image_data.split(',', 1)
+                image_bytes = base64.b64decode(encoded)
+                image = Image.open(BytesIO(image_bytes)).convert("RGB")
+                source = f"image_{i}"
+            else:
+                # Assume it's a URL
+                response = requests.get(image_data, timeout=15)
+                response.raise_for_status()
+                image = Image.open(BytesIO(response.content)).convert("RGB")
+                source = image_data
+            
             dets = run_inference_pil(image)
-            detections.append({"source": url, "detections": dets})
+            detections.append({"source": source, "detections": dets})
         except Exception as e:
-            detections.append({"source": url, "error": str(e)})
+            detections.append({"source": f"image_{i}", "error": str(e)})
 
     return jsonify({"results": detections})
 

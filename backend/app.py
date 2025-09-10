@@ -31,7 +31,7 @@ print("Model confidence threshold:", model.conf)
 print("Model IoU threshold:", model.iou)
 
 def run_inference_pil(image: Image.Image):
-    """Run YOLOv5 inference on a PIL image and return structured detections."""
+    """Run YOLOv5 inference on a PIL image and return only the top 1 detection."""
     print(f"Running inference on image of size: {image.size}")
     print(f"Model classes available: {model.names}")
     
@@ -47,18 +47,25 @@ def run_inference_pil(image: Image.Image):
     else:
         print("No detections found!")
     
-    detections = []
-    for _, row in df.iterrows():
-        detections.append({
-            "xmin": float(row["xmin"]),
-            "ymin": float(row["ymin"]),
-            "xmax": float(row["xmax"]),
-            "ymax": float(row["ymax"]),
-            "confidence": float(row["confidence"]),
-            "class": int(row["class"]),
-            "name": str(row["name"]),
-        })
-    return detections
+    # Return only the top 1 detection (highest confidence)
+    if len(df) > 0:
+        # Sort by confidence in descending order and take the first one
+        top_detection = df.sort_values('confidence', ascending=False).iloc[0]
+        
+        detection = {
+            "xmin": float(top_detection["xmin"]),
+            "ymin": float(top_detection["ymin"]),
+            "xmax": float(top_detection["xmax"]),
+            "ymax": float(top_detection["ymax"]),
+            "confidence": float(top_detection["confidence"]),
+            "class": int(top_detection["class"]),
+            "name": str(top_detection["name"]),
+        }
+        
+        print(f"Top prediction: {detection['name']} (confidence: {detection['confidence']:.3f})")
+        return [detection]  # Return as list for consistency
+    else:
+        return []  # Return empty list if no detections
 
 @app.route("/detect", methods=["POST"])
 def detect():

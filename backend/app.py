@@ -23,7 +23,7 @@ try:
     # Try loading best_windows.pt first (known working model)
     model_path = Path(__file__).parent / "best_windows.pt"
     if model_path.exists():
-        model = torch.load(model_path, map_location='cpu')
+        model = torch.load(model_path, map_location='cpu', weights_only=False)
         print("✅ Loaded best_windows.pt successfully")
     else:
         raise FileNotFoundError("best_windows.pt not found")
@@ -33,7 +33,7 @@ except Exception as e:
         # Fallback to best.pt
         model_path = Path(__file__).parent / "best.pt"
         if model_path.exists():
-            model = torch.load(model_path, map_location='cpu')
+            model = torch.load(model_path, map_location='cpu', weights_only=False)
             print("✅ Loaded best.pt as fallback")
         else:
             raise FileNotFoundError("best.pt not found")

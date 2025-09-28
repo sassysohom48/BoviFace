@@ -82,7 +82,7 @@ def load_model():
             logger.info("Custom models failed, trying YOLOv8...")
             try:
                 from ultralytics import YOLO
-                model = YOLO('yolov8n.pt')  # Use YOLOv8 nano (smaller, faster)
+                model = YOLO('yolov8n.pt')  # Use YOLOv8 nano (smallest model)
                 logger.info("⚠️ Using YOLOv8n model as fallback")
             except Exception as e3:
                 logger.error(f"Failed to load YOLOv8 model: {e3}")
@@ -92,6 +92,10 @@ def load_model():
         model.conf = 0.1   # Lower confidence threshold to catch more detections
         model.iou = 0.45   # NMS IoU threshold
         model.eval()
+        
+        # Optimize for memory usage
+        import gc
+        gc.collect()
         
         # Print model info
         logger.info("✅ Model loaded successfully!")

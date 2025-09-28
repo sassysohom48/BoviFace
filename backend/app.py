@@ -24,6 +24,9 @@ def patched_torch_load(f, map_location=None, pickle_module=None, weights_only=No
 
 torch.load = patched_torch_load
 
+# Also set environment variable to disable weights_only globally
+os.environ['TORCH_WEIGHTS_ONLY'] = 'False'
+
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
@@ -42,41 +45,45 @@ def load_model():
         from ultralytics import YOLO
         logger.info("Starting model loading...")
         
-        # Model loading will use the patched torch.load
+        # Try loading default YOLOv5s first (most reliable)
+        logger.info("Attempting to load default YOLOv5s model...")
+        try:
+            model = YOLO('yolov5s.pt')
+            logger.info("✅ Loaded default YOLOv5s model successfully")
+        except Exception as e_default:
+            logger.warning(f"Failed to load default model: {e_default}")
+            model = None
         
-        # Try loading custom model first
-        model_path = Path(__file__).parent / "best_windows.pt"
-        if model_path.exists():
-            logger.info(f"Loading custom model: {model_path}")
-            try:
-                # Load with weights_only=False explicitly
-                model = YOLO(str(model_path))
-                logger.info("✅ Loaded best_windows.pt successfully")
-            except Exception as e1:
-                logger.warning(f"Failed to load best_windows.pt: {e1}")
-                raise e1
-        else:
-            logger.warning("best_windows.pt not found, trying best.pt")
-            # Fallback to best.pt
-            model_path = Path(__file__).parent / "best.pt"
+        # If default fails, try custom models
+        if model is None:
+            logger.info("Trying custom models...")
+            
+            # Try best_windows.pt
+            model_path = Path(__file__).parent / "best_windows.pt"
             if model_path.exists():
-                logger.info(f"Loading fallback model: {model_path}")
+                logger.info(f"Loading custom model: {model_path}")
                 try:
                     model = YOLO(str(model_path))
-                    logger.info("✅ Loaded best.pt as fallback")
-                except Exception as e2:
-                    logger.warning(f"Failed to load best.pt: {e2}")
-                    raise e2
-            else:
-                logger.warning("best.pt not found, using default YOLOv5s")
-                # Last resort: use default YOLOv5s
-                try:
-                    model = YOLO('yolov5s.pt')
-                    logger.info("⚠️ Using default YOLOv5s model")
-                except Exception as e3:
-                    logger.error(f"Failed to load default model: {e3}")
-                    # If all else fails, return None
-                    return False
+                    logger.info("✅ Loaded best_windows.pt successfully")
+                except Exception as e1:
+                    logger.warning(f"Failed to load best_windows.pt: {e1}")
+                    model = None
+            
+            # Try best.pt if best_windows.pt failed
+            if model is None:
+                model_path = Path(__file__).parent / "best.pt"
+                if model_path.exists():
+                    logger.info(f"Loading fallback model: {model_path}")
+                    try:
+                        model = YOLO(str(model_path))
+                        logger.info("✅ Loaded best.pt as fallback")
+                    except Exception as e2:
+                        logger.warning(f"Failed to load best.pt: {e2}")
+                        model = None
+        
+        if model is None:
+            logger.error("All model loading attempts failed")
+            return False
         
         # Configure model
         model.conf = 0.1   # Lower confidence threshold to catch more detections

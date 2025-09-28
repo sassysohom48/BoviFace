@@ -4,7 +4,7 @@ services:
     env: python
     plan: starter
     buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 120
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 300 --keep-alive 2 --max-requests 1000
     envVars:
       - key: PORT
         value: 10000
@@ -12,5 +12,9 @@ services:
         value: 3.11.0
       - key: PIP_VERSION
         value: 25.2
+      - key: MPLCONFIGDIR
+        value: /tmp
+      - key: TORCH_HOME
+        value: /tmp/torch_cache
     healthCheckPath: /health
     autoDeploy: true

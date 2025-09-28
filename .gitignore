@@ -57,8 +57,8 @@ Thumbs.db
 *.log
 logs/
 
-# Model files (large files)
-*.pt
+# Model files (large files) - but keep our trained models
+# *.pt
 *.pth
 *.h5
 *.pkl

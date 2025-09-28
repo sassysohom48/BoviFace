@@ -42,52 +42,56 @@ def load_model():
     global model
     
     try:
-        from ultralytics import YOLO
         logger.info("Starting model loading...")
         
-        # Try loading default YOLOv5s first (most reliable)
-        logger.info("Attempting to load default YOLOv5s model...")
-        try:
-            model = YOLO('yolov5s.pt')
-            logger.info("✅ Loaded default YOLOv5s model successfully")
-        except Exception as e_default:
-            logger.warning(f"Failed to load default model: {e_default}")
-            model = None
+        # Try loading custom YOLOv5 models first using torch.hub
+        logger.info("Attempting to load custom YOLOv5 models...")
         
-        # If default fails, try custom models
+        # Ensure local yolov5 repo is importable
+        YV5_DIR = Path(__file__).resolve().parent / "yolov5"
+        if str(YV5_DIR) not in sys.path:
+            sys.path.append(str(YV5_DIR))
+        
+        # Try best_windows.pt
+        model_path = Path(__file__).parent / "best_windows.pt"
+        if model_path.exists():
+            logger.info(f"Loading custom model: {model_path}")
+            try:
+                import torch
+                model = torch.hub.load(str(YV5_DIR), "custom", path=str(model_path), source="local")
+                logger.info("✅ Loaded best_windows.pt successfully")
+            except Exception as e1:
+                logger.warning(f"Failed to load best_windows.pt: {e1}")
+                model = None
+        
+        # Try best.pt if best_windows.pt failed
         if model is None:
-            logger.info("Trying custom models...")
-            
-            # Try best_windows.pt
-            model_path = Path(__file__).parent / "best_windows.pt"
+            model_path = Path(__file__).parent / "best.pt"
             if model_path.exists():
-                logger.info(f"Loading custom model: {model_path}")
+                logger.info(f"Loading fallback model: {model_path}")
                 try:
-                    model = YOLO(str(model_path))
-                    logger.info("✅ Loaded best_windows.pt successfully")
-                except Exception as e1:
-                    logger.warning(f"Failed to load best_windows.pt: {e1}")
+                    import torch
+                    model = torch.hub.load(str(YV5_DIR), "custom", path=str(model_path), source="local")
+                    logger.info("✅ Loaded best.pt as fallback")
+                except Exception as e2:
+                    logger.warning(f"Failed to load best.pt: {e2}")
                     model = None
-            
-            # Try best.pt if best_windows.pt failed
-            if model is None:
-                model_path = Path(__file__).parent / "best.pt"
-                if model_path.exists():
-                    logger.info(f"Loading fallback model: {model_path}")
-                    try:
-                        model = YOLO(str(model_path))
-                        logger.info("✅ Loaded best.pt as fallback")
-                    except Exception as e2:
-                        logger.warning(f"Failed to load best.pt: {e2}")
-                        model = None
         
+        # If custom models fail, try YOLOv8 as last resort
         if model is None:
-            logger.error("All model loading attempts failed")
-            return False
+            logger.info("Custom models failed, trying YOLOv8...")
+            try:
+                from ultralytics import YOLO
+                model = YOLO('yolov8n.pt')  # Use YOLOv8 nano (smaller, faster)
+                logger.info("⚠️ Using YOLOv8n model as fallback")
+            except Exception as e3:
+                logger.error(f"Failed to load YOLOv8 model: {e3}")
+                return False
         
         # Configure model
         model.conf = 0.1   # Lower confidence threshold to catch more detections
         model.iou = 0.45   # NMS IoU threshold
+        model.eval()
         
         # Print model info
         logger.info("✅ Model loaded successfully!")
@@ -117,34 +121,66 @@ def run_inference_pil(image: Image.Image):
     try:
         logger.info(f"Running inference on image of size: {image.size}")
         
-        # Run inference with ultralytics YOLO
-        results = model(image)
-        
-        # Get the first result
-        result = results[0]
-        
-        # Debug: Print what we detected
-        logger.info(f"Detected {len(result.boxes)} objects")
-        
-        if len(result.boxes) > 0:
-            # Get the top detection (highest confidence)
-            top_box = result.boxes[0]
+        # Check if it's a YOLOv5 model (torch.hub) or YOLOv8 model (ultralytics)
+        if hasattr(model, 'predict'):  # YOLOv8 ultralytics model
+            # Run inference with ultralytics YOLO
+            results = model(image)
             
-            detection = {
-                "xmin": float(top_box.xyxy[0][0]),
-                "ymin": float(top_box.xyxy[0][1]),
-                "xmax": float(top_box.xyxy[0][2]),
-                "ymax": float(top_box.xyxy[0][3]),
-                "confidence": float(top_box.conf[0]),
-                "class": int(top_box.cls[0]),
-                "name": model.names[int(top_box.cls[0])],
-            }
+            # Get the first result
+            result = results[0]
             
-            logger.info(f"Top prediction: {detection['name']} (confidence: {detection['confidence']:.3f})")
-            return [detection]  # Return as list for consistency
-        else:
-            logger.info("No detections found!")
-            return []  # Return empty list if no detections
+            # Debug: Print what we detected
+            logger.info(f"Detected {len(result.boxes)} objects")
+            
+            if len(result.boxes) > 0:
+                # Get the top detection (highest confidence)
+                top_box = result.boxes[0]
+                
+                detection = {
+                    "xmin": float(top_box.xyxy[0][0]),
+                    "ymin": float(top_box.xyxy[0][1]),
+                    "xmax": float(top_box.xyxy[0][2]),
+                    "ymax": float(top_box.xyxy[0][3]),
+                    "confidence": float(top_box.conf[0]),
+                    "class": int(top_box.cls[0]),
+                    "name": model.names[int(top_box.cls[0])],
+                }
+                
+                logger.info(f"Top prediction: {detection['name']} (confidence: {detection['confidence']:.3f})")
+                return [detection]  # Return as list for consistency
+            else:
+                logger.info("No detections found!")
+                return []  # Return empty list if no detections
+                
+        else:  # YOLOv5 torch.hub model
+            # Run inference with YOLOv5
+            results = model(image)
+            
+            # Get the first result
+            result = results[0]
+            
+            # Debug: Print what we detected
+            logger.info(f"Detected {len(result.pred)} objects")
+            
+            if len(result.pred) > 0:
+                # Get the top detection (highest confidence)
+                top_pred = result.pred[0]
+                
+                detection = {
+                    "xmin": float(top_pred[0]),
+                    "ymin": float(top_pred[1]),
+                    "xmax": float(top_pred[2]),
+                    "ymax": float(top_pred[3]),
+                    "confidence": float(top_pred[4]),
+                    "class": int(top_pred[5]),
+                    "name": model.names[int(top_pred[5])],
+                }
+                
+                logger.info(f"Top prediction: {detection['name']} (confidence: {detection['confidence']:.3f})")
+                return [detection]  # Return as list for consistency
+            else:
+                logger.info("No detections found!")
+                return []  # Return empty list if no detections
             
     except Exception as e:
         logger.error(f"Error during inference: {e}")

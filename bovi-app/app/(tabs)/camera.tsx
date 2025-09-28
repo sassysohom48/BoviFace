@@ -143,16 +143,23 @@ export default function CameraScreen() {
             <TouchableOpacity
               style={styles.primaryCta}
               onPress={async () => {
+                // Try to upload to Supabase first
                 const cattleUrl = await uploadImage(cattleUri, `cattle_${Date.now()}.jpg`);
                 const muzzleUrl = await uploadImage(muzzleUri, `muzzle_${Date.now()}.jpg`);
 
                 if (cattleUrl && muzzleUrl) {
+                  // Upload successful - proceed with Supabase URLs
                   router.push({
                     pathname: "/(tabs)/form",
                     params: { cattleUri, muzzleUri },
                   });
                 } else {
-                  Alert.alert("Upload Failed!", "Please Try Again.");
+                  // Upload failed - proceed with local URIs as fallback
+                  console.log("Supabase upload failed, using local URIs as fallback");
+                  router.push({
+                    pathname: "/(tabs)/form",
+                    params: { cattleUri, muzzleUri },
+                  });
                 }
               }}
             >

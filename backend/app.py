@@ -192,33 +192,39 @@ def run_inference_pil(image: Image.Image):
                 
         elif hasattr(model, 'names') and hasattr(model, 'predict'):  # Mock model
             # Run inference with mock model
-            results = model(image)
-            
-            # Get the first result
-            result = results[0]
-            
-            # Debug: Print what we detected
-            logger.info(f"Detected {len(result.boxes)} objects")
-            
-            if len(result.boxes) > 0:
-                # Get the top detection (highest confidence)
-                top_box = result.boxes[0]
+            try:
+                logger.info("Running mock model inference...")
+                results = model(image)
+                logger.info(f"Mock model returned {len(results)} results")
                 
-                detection = {
-                    "xmin": float(top_box.xyxy[0][0]),
-                    "ymin": float(top_box.xyxy[0][1]),
-                    "xmax": float(top_box.xyxy[0][2]),
-                    "ymax": float(top_box.xyxy[0][3]),
-                    "confidence": float(top_box.conf[0]),
-                    "class": int(top_box.cls[0]),
-                    "name": model.names[int(top_box.cls[0])],
-                }
+                # Get the first result
+                result = results[0]
+                logger.info(f"First result has {len(result.boxes)} boxes")
                 
-                logger.info(f"Top prediction: {detection['name']} (confidence: {detection['confidence']:.3f})")
-                return [detection]  # Return as list for consistency
-            else:
-                logger.info("No detections found!")
-                return []  # Return empty list if no detections
+                if len(result.boxes) > 0:
+                    # Get the top detection (highest confidence)
+                    top_box = result.boxes[0]
+                    logger.info(f"Top box: xyxy={top_box.xyxy}, conf={top_box.conf}, cls={top_box.cls}")
+                    
+                    detection = {
+                        "xmin": float(top_box.xyxy[0][0]),
+                        "ymin": float(top_box.xyxy[0][1]),
+                        "xmax": float(top_box.xyxy[0][2]),
+                        "ymax": float(top_box.xyxy[0][3]),
+                        "confidence": float(top_box.conf[0]),
+                        "class": int(top_box.cls[0]),
+                        "name": model.names[int(top_box.cls[0])],
+                    }
+                    
+                    logger.info(f"Top prediction: {detection['name']} (confidence: {detection['confidence']:.3f})")
+                    return [detection]  # Return as list for consistency
+                else:
+                    logger.info("No detections found!")
+                    return []  # Return empty list if no detections
+            except Exception as mock_error:
+                logger.error(f"Mock model inference failed: {mock_error}")
+                logger.error(f"Mock error type: {type(mock_error)}")
+                return []
                 
         else:  # YOLOv5 torch.hub model
             # Run inference with YOLOv5
@@ -257,52 +263,72 @@ def run_inference_pil(image: Image.Image):
 @app.route("/detect", methods=["POST"])
 def detect():
     """Accepts JSON with image URLs or multipart file upload; returns YOLOv5 detections."""
-    detections = []
-
-    # Case 1: multipart/form-data with files
-    if request.files:
-        for file_key in request.files:
-            file = request.files[file_key]
-            try:
-                image = Image.open(file.stream).convert("RGB")
-                dets = run_inference_pil(image)
-                detections.append({"source": file.filename, "detections": dets})
-            except Exception as e:
-                detections.append({"source": file.filename, "error": str(e)})
-        return jsonify({"results": detections})
-
-    # Case 2: application/json with base64 images or URLs
     try:
-        data = request.get_json(silent=True) or {}
-        images = data.get("images", [])
-    except Exception:
-        images = []
+        logger.info("=== /detect endpoint called ===")
+        detections = []
 
-    if not images:
-        return jsonify({"error": "No images provided. Send files or JSON {images: [...]}"}), 400
+        # Case 1: multipart/form-data with files
+        if request.files:
+            logger.info("Processing multipart files...")
+            for file_key in request.files:
+                file = request.files[file_key]
+                try:
+                    image = Image.open(file.stream).convert("RGB")
+                    dets = run_inference_pil(image)
+                    detections.append({"source": file.filename, "detections": dets})
+                except Exception as e:
+                    logger.error(f"Error processing file {file.filename}: {e}")
+                    detections.append({"source": file.filename, "error": str(e)})
+            return jsonify({"results": detections})
 
-    for i, image_data in enumerate(images):
+        # Case 2: application/json with base64 images or URLs
+        logger.info("Processing JSON request...")
         try:
-            # Check if it's a base64 image
-            if isinstance(image_data, str) and image_data.startswith('data:image'):
-                # Extract base64 data from data URL
-                header, encoded = image_data.split(',', 1)
-                image_bytes = base64.b64decode(encoded)
-                image = Image.open(BytesIO(image_bytes)).convert("RGB")
-                source = f"image_{i}"
-            else:
-                # Assume it's a URL
-                response = requests.get(image_data, timeout=15)
-                response.raise_for_status()
-                image = Image.open(BytesIO(response.content)).convert("RGB")
-                source = image_data
-            
-            dets = run_inference_pil(image)
-            detections.append({"source": source, "detections": dets})
+            data = request.get_json(silent=True) or {}
+            images = data.get("images", [])
+            logger.info(f"Received {len(images)} images")
         except Exception as e:
-            detections.append({"source": f"image_{i}", "error": str(e)})
+            logger.error(f"Error parsing JSON: {e}")
+            images = []
 
-    return jsonify({"results": detections})
+        if not images:
+            logger.error("No images provided")
+            return jsonify({"error": "No images provided. Send files or JSON {images: [...]}"}), 400
+
+        for i, image_data in enumerate(images):
+            try:
+                logger.info(f"Processing image {i}...")
+                # Check if it's a base64 image
+                if isinstance(image_data, str) and image_data.startswith('data:image'):
+                    logger.info("Processing base64 image...")
+                    # Extract base64 data from data URL
+                    header, encoded = image_data.split(',', 1)
+                    image_bytes = base64.b64decode(encoded)
+                    image = Image.open(BytesIO(image_bytes)).convert("RGB")
+                    source = f"image_{i}"
+                else:
+                    logger.info("Processing URL image...")
+                    # Assume it's a URL
+                    response = requests.get(image_data, timeout=15)
+                    response.raise_for_status()
+                    image = Image.open(BytesIO(response.content)).convert("RGB")
+                    source = image_data
+                
+                logger.info(f"Running inference on {source}...")
+                dets = run_inference_pil(image)
+                logger.info(f"Inference completed, got {len(dets)} detections")
+                detections.append({"source": source, "detections": dets})
+            except Exception as e:
+                logger.error(f"Error processing image {i}: {e}")
+                detections.append({"source": f"image_{i}", "error": str(e)})
+
+        logger.info("=== /detect endpoint completed successfully ===")
+        return jsonify({"results": detections})
+        
+    except Exception as e:
+        logger.error(f"Critical error in /detect endpoint: {e}")
+        logger.error(f"Error type: {type(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 @app.route("/health", methods=["GET"])
 def health():

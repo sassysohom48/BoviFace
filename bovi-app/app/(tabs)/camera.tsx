@@ -71,8 +71,10 @@ export default function CameraScreen() {
 
   const uploadImage = async (uri: string, fileName: string) => {
     try {
+      console.log("Starting upload for:", fileName);
       const response = await fetch(uri);
       const blob = await response.blob();
+      console.log("Blob created, size:", blob.size);
 
       const { data, error } = await supabase.storage
         .from("cow-images") // bucket name (make sure you create this in Supabase)
@@ -82,19 +84,25 @@ export default function CameraScreen() {
         });
 
       if (error) {
-        console.error("Upload error:", error.message);
-        Alert.alert("Upload Error", error.message);
+        console.error("Supabase upload error:", error);
+        console.error("Error details:", JSON.stringify(error, null, 2));
+        // Don't show alert, just log and return null
         return null;
       }
+
+      console.log("Upload successful:", data);
 
       // Get public URL
       const { data: publicUrlData } = supabase.storage
         .from("cow-images")
         .getPublicUrl(`photos/${fileName}`);
 
+      console.log("Public URL:", publicUrlData.publicUrl);
       return publicUrlData.publicUrl;
     } catch (err) {
-      console.error("Upload failed", err);
+      console.error("Upload failed with exception:", err);
+      console.error("Error type:", typeof err);
+      console.error("Error message:", err.message);
       return null;
     }
   };

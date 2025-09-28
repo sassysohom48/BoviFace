@@ -104,6 +104,10 @@ def load_model():
                                 self.cls = [0]
                         
                         return [MockResult()]
+                    
+                    def predict(self, image):
+                        # Alternative method for ultralytics compatibility
+                        return self(image)
                 
                 model = MockModel()
                 logger.info("⚠️ Using lightweight mock model for free tier")
@@ -186,7 +190,7 @@ def run_inference_pil(image: Image.Image):
                 logger.info("No detections found!")
                 return []  # Return empty list if no detections
                 
-        elif hasattr(model, 'names') and not hasattr(model, 'predict'):  # Mock model
+        elif hasattr(model, 'names') and hasattr(model, 'predict'):  # Mock model
             # Run inference with mock model
             results = model(image)
             

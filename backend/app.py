@@ -9,6 +9,9 @@ from PIL import Image
 import requests
 import torch
 
+# Fix PyTorch weights_only issue for ultralytics
+torch.serialization.add_safe_globals(['ultralytics.nn.tasks.DetectionModel'])
+
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
@@ -18,12 +21,13 @@ if str(YV5_DIR) not in sys.path:
     sys.path.append(str(YV5_DIR))
 
 # Load YOLOv5 model (custom weights)
-# Load model directly without torch.hub to avoid submodule issues
+# Use ultralytics YOLO for better compatibility
 try:
-    # Try loading best_windows.pt first (known working model)
+    from ultralytics import YOLO
+    # Try loading custom model first
     model_path = Path(__file__).parent / "best_windows.pt"
     if model_path.exists():
-        model = torch.load(model_path, map_location='cpu', weights_only=False)
+        model = YOLO(str(model_path))
         print("✅ Loaded best_windows.pt successfully")
     else:
         raise FileNotFoundError("best_windows.pt not found")
@@ -33,16 +37,15 @@ except Exception as e:
         # Fallback to best.pt
         model_path = Path(__file__).parent / "best.pt"
         if model_path.exists():
-            model = torch.load(model_path, map_location='cpu', weights_only=False)
+            model = YOLO(str(model_path))
             print("✅ Loaded best.pt as fallback")
         else:
             raise FileNotFoundError("best.pt not found")
     except Exception as e2:
         print(f"❌ Failed to load best.pt: {e2}")
-        # Last resort: use ultralytics YOLOv5
-        from ultralytics import YOLO
+        # Last resort: use default YOLOv5s
         model = YOLO('yolov5s.pt')
-        print("⚠️ Using ultralytics YOLOv5s model")
+        print("⚠️ Using default YOLOv5s model")
 model.conf = 0.1   # Lower confidence threshold to catch more detections
 model.iou = 0.45   # NMS IoU threshold
 model.eval()
@@ -58,38 +61,34 @@ print("Model type:", type(model))
 def run_inference_pil(image: Image.Image):
     """Run YOLOv5 inference on a PIL image and return only the top 1 detection."""
     print(f"Running inference on image of size: {image.size}")
-    print(f"Model classes available: {model.names}")
     
-    results = model(image)  # inference
-    df = results.pandas().xyxy[0]
+    # Run inference with ultralytics YOLO
+    results = model(image)
+    
+    # Get the first result
+    result = results[0]
     
     # Debug: Print what we detected
-    print(f"Detected {len(df)} objects")
-    if len(df) > 0:
-        print("Raw detections:")
-        for _, row in df.iterrows():
-            print(f"  - {row['name']} (confidence: {row['confidence']:.3f})")
-    else:
-        print("No detections found!")
+    print(f"Detected {len(result.boxes)} objects")
     
-    # Return only the top 1 detection (highest confidence)
-    if len(df) > 0:
-        # Sort by confidence in descending order and take the first one
-        top_detection = df.sort_values('confidence', ascending=False).iloc[0]
+    if len(result.boxes) > 0:
+        # Get the top detection (highest confidence)
+        top_box = result.boxes[0]
         
         detection = {
-            "xmin": float(top_detection["xmin"]),
-            "ymin": float(top_detection["ymin"]),
-            "xmax": float(top_detection["xmax"]),
-            "ymax": float(top_detection["ymax"]),
-            "confidence": float(top_detection["confidence"]),
-            "class": int(top_detection["class"]),
-            "name": str(top_detection["name"]),
+            "xmin": float(top_box.xyxy[0][0]),
+            "ymin": float(top_box.xyxy[0][1]),
+            "xmax": float(top_box.xyxy[0][2]),
+            "ymax": float(top_box.xyxy[0][3]),
+            "confidence": float(top_box.conf[0]),
+            "class": int(top_box.cls[0]),
+            "name": model.names[int(top_box.cls[0])],
         }
         
         print(f"Top prediction: {detection['name']} (confidence: {detection['confidence']:.3f})")
         return [detection]  # Return as list for consistency
     else:
+        print("No detections found!")
         return []  # Return empty list if no detections
 
 @app.route("/detect", methods=["POST"])

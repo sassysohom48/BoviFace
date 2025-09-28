@@ -108,9 +108,16 @@ def load_model():
         return False
 
 # Load model on startup
-model_loaded = load_model()
-if not model_loaded:
-    logger.error("Failed to load any model. Service may not work properly.")
+try:
+    model_loaded = load_model()
+    if not model_loaded:
+        logger.error("Failed to load any model. Service may not work properly.")
+    else:
+        logger.info("✅ Model loading completed successfully")
+except Exception as e:
+    logger.error(f"❌ Critical error during model loading: {e}")
+    logger.info("Service will start without model - all inference requests will fail")
+    model_loaded = False
 
 def run_inference_pil(image: Image.Image):
     """Run YOLOv5 inference on a PIL image and return only the top 1 detection."""

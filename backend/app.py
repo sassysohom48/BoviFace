@@ -18,22 +18,31 @@ if str(YV5_DIR) not in sys.path:
     sys.path.append(str(YV5_DIR))
 
 # Load YOLOv5 model (custom weights)
-# Using torch.hub with source='local' avoids PyTorch 2.6 safe-unpickling issues
+# Load model directly without torch.hub to avoid submodule issues
 try:
     # Try loading best_windows.pt first (known working model)
-    model = torch.hub.load(str(YV5_DIR), "custom", path=str(Path(__file__).parent / "best_windows.pt"), source="local")
-    print("✅ Loaded best_windows.pt successfully")
+    model_path = Path(__file__).parent / "best_windows.pt"
+    if model_path.exists():
+        model = torch.load(model_path, map_location='cpu')
+        print("✅ Loaded best_windows.pt successfully")
+    else:
+        raise FileNotFoundError("best_windows.pt not found")
 except Exception as e:
     print(f"❌ Failed to load best_windows.pt: {e}")
     try:
         # Fallback to best.pt
-        model = torch.hub.load(str(YV5_DIR), "custom", path=str(Path(__file__).parent / "best.pt"), source="local")
-        print("✅ Loaded best.pt as fallback")
+        model_path = Path(__file__).parent / "best.pt"
+        if model_path.exists():
+            model = torch.load(model_path, map_location='cpu')
+            print("✅ Loaded best.pt as fallback")
+        else:
+            raise FileNotFoundError("best.pt not found")
     except Exception as e2:
         print(f"❌ Failed to load best.pt: {e2}")
-        # Last resort: use default YOLOv5s
-        model = torch.hub.load(str(YV5_DIR), "yolov5s", source="local")
-        print("⚠️ Using default YOLOv5s model")
+        # Last resort: use ultralytics YOLOv5
+        from ultralytics import YOLO
+        model = YOLO('yolov5s.pt')
+        print("⚠️ Using ultralytics YOLOv5s model")
 model.conf = 0.1   # Lower confidence threshold to catch more detections
 model.iou = 0.45   # NMS IoU threshold
 model.eval()

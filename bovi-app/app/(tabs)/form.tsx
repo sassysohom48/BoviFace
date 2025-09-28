@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView, Alert, Modal } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { router } from "expo-router";
 import { supabase } from "../../utils/supabaseClient";
@@ -22,6 +22,17 @@ export default function FormScreen() {
   const [breed, setBreed] = useState("");
   const [weight, setWeight] = useState("");
   const [location, setLocation] = useState("");
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+
+  // Indian states list
+  const indianStates = [
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+    "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+    "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya",
+    "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim",
+    "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand",
+    "West Bengal", "Delhi", "Jammu and Kashmir", "Ladakh"
+  ];
 
   // Check if required parameters are missing
   useEffect(() => {
@@ -117,7 +128,7 @@ export default function FormScreen() {
       
       let result;
       try {
-        const response = await fetch('http://10.0.9.220:5000/detect', {
+        const response = await fetch('http://localhost:5000/detect', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -164,13 +175,9 @@ export default function FormScreen() {
         }
       }
       
-      // If no predictions from model, use mock data
+      // If no predictions from model, show unrecognized breed message
       if (predictions.length === 0) {
-        predictions = [
-          { breed: "Holstein Friesian", confidence: 0.85 },
-          { breed: "Jersey", confidence: 0.72 },
-          { breed: "Angus", confidence: 0.68 },
-        ];
+        predictions = []; // Keep empty to trigger "Not recognized? New breed" in result screen
       }
       
       console.log("Breed analysis results:", predictions);
@@ -288,13 +295,15 @@ export default function FormScreen() {
         keyboardType="numeric"
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Location (optional)"
-        placeholderTextColor="#aaa"
-        value={location}
-        onChangeText={setLocation}
-      />
+      <TouchableOpacity 
+        style={styles.locationButton}
+        onPress={() => setShowLocationPicker(true)}
+      >
+        <Text style={[styles.locationButtonText, location && { color: 'white' }]}>
+          {location || "Select Location (optional)"}
+        </Text>
+        <Text style={styles.locationButtonIcon}>▼</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.button} onPress={handleSubmit}>
         <Text style={styles.buttonText}>Analyze Cattle</Text>
@@ -306,6 +315,40 @@ export default function FormScreen() {
       >
         <Text style={styles.backButtonText}>Back to Camera</Text>
       </TouchableOpacity>
+
+      {/* Location Picker Modal */}
+      <Modal
+        visible={showLocationPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Location</Text>
+            <TouchableOpacity
+              onPress={() => setShowLocationPicker(false)}
+              style={styles.closeButton}
+            >
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.statesList}>
+            {indianStates.map((state, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.stateItem}
+                onPress={() => {
+                  setLocation(state);
+                  setShowLocationPicker(false);
+                }}
+              >
+                <Text style={styles.stateText}>{state}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -396,5 +439,71 @@ const styles = StyleSheet.create({
     color: "#666",
     fontSize: 16,
     textAlign: "center",
+  },
+  locationButton: {
+    backgroundColor: "#222",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#333",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  locationButtonText: {
+    color: "#aaa",
+    fontSize: 16,
+    flex: 1,
+  },
+  locationButtonIcon: {
+    color: "#aaa",
+    fontSize: 12,
+    marginLeft: 10,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "#000",
+    paddingTop: 60,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  closeButton: {
+    padding: 8,
+    backgroundColor: "#333",
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: "#fff",
+  },
+  statesList: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  stateItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  stateText: {
+    color: "#fff",
+    fontSize: 16,
   },
 });

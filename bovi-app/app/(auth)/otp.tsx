@@ -1,16 +1,30 @@
 import { useState } from 'react';
-import { StyleSheet, View, TextInput, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, View, TextInput, TouchableOpacity, Text, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function OtpScreen() {
   const [otp, setOtp] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
+  const { phone } = useLocalSearchParams<{ phone?: string }>();
 
-  const handleVerify = () => {
-    if (otp.length === 6) {
-      // Navigate directly to community after OTP verification
+  const handleVerify = async () => {
+    if (otp.length !== 6) {
+      Alert.alert('Error', 'Please enter a 6-digit OTP');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // Skip verification and go directly to community
       router.replace('/(tabs)/community');
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      Alert.alert('Error', 'Failed to verify OTP. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -30,8 +44,14 @@ export default function OtpScreen() {
         value={otp}
         onChangeText={setOtp}
       />
-      <TouchableOpacity style={styles.btn} onPress={handleVerify}>
-        <ThemedText style={{ color: '#fff' }}>Verify</ThemedText>
+      <TouchableOpacity 
+        style={[styles.btn, submitting && { opacity: 0.6 }]} 
+        onPress={handleVerify}
+        disabled={submitting}
+      >
+        <ThemedText style={{ color: '#fff' }}>
+          {submitting ? 'Verifying...' : 'Verify'}
+        </ThemedText>
       </TouchableOpacity>
     </View>
   );

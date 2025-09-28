@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -23,6 +24,198 @@ import ProfileGreyIcon from '@/assets/images/Profile-grey.svg';
 
 export default function CommunityScreen() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState('Feed');
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isRecommendedExpanded, setIsRecommendedExpanded] = useState(false);
+
+  // Tab data
+  const tabs = ['Feed', 'Gov Schemes', 'Breeds', 'Health'];
+
+  // Sample data for different tabs
+  const feedData = [
+    {
+      id: 1,
+      title: "My Murrah has low milk yield, what should I feed?",
+      image: "https://tse3.mm.bing.net/th/id/OIP.YwPoCVb7SRXvNpyOrGF9vQHaF2?pid=Api&P=0&h=180",
+      time: "6h ago",
+      category: "Feed"
+    },
+    {
+      id: 2,
+      title: "Best feeding schedule for dairy cattle",
+      image: "https://tse3.mm.bing.net/th/id/OIP.W9-dqORWYMnQukQGcwKfngHaE7?pid=Api&P=0&h=180",
+      time: "2h ago",
+      category: "Feed"
+    },
+    {
+      id: 3,
+      title: "Organic feed vs commercial feed comparison",
+      image: "https://tse2.mm.bing.net/th/id/OIP.e_ReURKuhhWzzC9mM5mqRQHaE8?pid=Api&P=0&h=180",
+      time: "1d ago",
+      category: "Feed"
+    },
+    {
+      id: 4,
+      title: "Winter feeding tips for cattle",
+      image: "https://static.toiimg.com/photo/107232722.cms",
+      time: "3d ago",
+      category: "Feed"
+    },
+    {
+      id: 5,
+      title: "Supplement feeding for pregnant cows",
+      image: "https://tse3.mm.bing.net/th/id/OIP.YwPoCVb7SRXvNpyOrGF9vQHaF2?pid=Api&P=0&h=180",
+      time: "5d ago",
+      category: "Feed"
+    },
+    {
+      id: 6,
+      title: "Cost-effective feeding strategies",
+      image: "https://tse3.mm.bing.net/th/id/OIP.W9-dqORWYMnQukQGcwKfngHaE7?pid=Api&P=0&h=180",
+      time: "1w ago",
+      category: "Feed"
+    }
+  ];
+
+  const govSchemesData = [
+    {
+      id: 1,
+      title: "Govt vaccination drive subsidy deadlines",
+      image: "https://tse2.mm.bing.net/th/id/OIP.e_ReURKuhhWzzC9mM5mqRQHaE8?pid=Api&P=0&h=180",
+      time: "1d ago",
+      category: "Government"
+    },
+    {
+      id: 2,
+      title: "New livestock insurance scheme launched",
+      image: "https://static.toiimg.com/photo/107232722.cms",
+      time: "3d ago",
+      category: "Government"
+    },
+    {
+      id: 3,
+      title: "Subsidy for cattle feed purchase",
+      image: "https://tse3.mm.bing.net/th/id/OIP.YwPoCVb7SRXvNpyOrGF9vQHaF2?pid=Api&P=0&h=180",
+      time: "5d ago",
+      category: "Government"
+    },
+    {
+      id: 4,
+      title: "Digital cattle registration benefits",
+      image: "https://tse3.mm.bing.net/th/id/OIP.W9-dqORWYMnQukQGcwKfngHaE7?pid=Api&P=0&h=180",
+      time: "1w ago",
+      category: "Government"
+    },
+    {
+      id: 5,
+      title: "Livestock development fund applications",
+      image: "https://tse2.mm.bing.net/th/id/OIP.e_ReURKuhhWzzC9mM5mqRQHaE8?pid=Api&P=0&h=180",
+      time: "2w ago",
+      category: "Government"
+    }
+  ];
+
+  const breedsData = [
+    {
+      id: 1,
+      title: "Holstein vs Jersey milk production",
+      image: "https://tse3.mm.bing.net/th/id/OIP.W9-dqORWYMnQukQGcwKfngHaE7?pid=Api&P=0&h=180",
+      time: "4h ago",
+      category: "Breeds"
+    },
+    {
+      id: 2,
+      title: "Best indigenous cattle breeds for India",
+      image: "https://tse2.mm.bing.net/th/id/OIP.e_ReURKuhhWzzC9mM5mqRQHaE8?pid=Api&P=0&h=180",
+      time: "8h ago",
+      category: "Breeds"
+    }
+  ];
+
+  const healthData = [
+    {
+      id: 1,
+      title: "Common cattle diseases and prevention",
+      image: "https://static.toiimg.com/photo/107232722.cms",
+      time: "2h ago",
+      category: "Health"
+    },
+    {
+      id: 2,
+      title: "Vaccination schedule for dairy cattle",
+      image: "https://tse3.mm.bing.net/th/id/OIP.YwPoCVb7SRXvNpyOrGF9vQHaF2?pid=Api&P=0&h=180",
+      time: "6h ago",
+      category: "Health"
+    }
+  ];
+
+  // Recommended articles data
+  const recommendedArticles = [
+    {
+      id: 1,
+      title: "Weather based advisories",
+      subtitle: "Heatwave alert provide shade and water continuously",
+      image: "https://tse3.mm.bing.net/th/id/OIP.W9-dqORWYMnQukQGcwKfngHaE7?pid=Api&P=0&h=180",
+      category: "Weather"
+    },
+    {
+      id: 2,
+      title: "Cattle breeding best practices",
+      subtitle: "Optimal breeding seasons and genetic selection tips",
+      image: "https://tse2.mm.bing.net/th/id/OIP.e_ReURKuhhWzzC9mM5mqRQHaE8?pid=Api&P=0&h=180",
+      category: "Breeding"
+    },
+    {
+      id: 3,
+      title: "Dairy farm management",
+      subtitle: "Essential tips for efficient dairy farm operations",
+      image: "https://static.toiimg.com/photo/107232722.cms",
+      category: "Management"
+    },
+    {
+      id: 4,
+      title: "Cattle housing design",
+      subtitle: "Proper shelter design for different weather conditions",
+      image: "https://tse3.mm.bing.net/th/id/OIP.YwPoCVb7SRXvNpyOrGF9vQHaF2?pid=Api&P=0&h=180",
+      category: "Housing"
+    }
+  ];
+
+  // Get current tab data
+  const getCurrentTabData = () => {
+    switch (activeTab) {
+      case 'Feed': return feedData;
+      case 'Gov Schemes': return govSchemesData;
+      case 'Breeds': return breedsData;
+      case 'Health': return healthData;
+      default: return feedData;
+    }
+  };
+
+  // Handle tab change
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+  };
+
+  // Handle See All button
+  const handleSeeAll = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  // Handle Recommended See All button
+  const handleRecommendedSeeAll = () => {
+    setIsRecommendedExpanded(!isRecommendedExpanded);
+  };
+
+  // Handle card press
+  const handleCardPress = (item: any) => {
+    Alert.alert(
+      item.title,
+      `This would open detailed view for: ${item.title}`,
+      [{ text: 'OK' }]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -43,9 +236,12 @@ export default function CommunityScreen() {
         </View>
 
         {/* Weekly Tips Card */}
-        <TouchableOpacity style={styles.weeklyTipsCard}>
+        <TouchableOpacity 
+          style={styles.weeklyTipsCard}
+          onPress={() => Alert.alert('Weekly Tips', 'This would open the full article about preventing mastitis in monsoon season.')}
+        >
           <Image
-            source={{ uri: 'https://via.placeholder.com/300x150/8B4513/FFFFFF?text=Vet+Examining+Animal' }}
+            source={{ uri: 'https://tse2.mm.bing.net/th/id/OIP.Bwp8fPcA811J3tR2tmgTdQHaFS?pid=Api&P=0&h=180' }}
             style={styles.weeklyTipsImage}
           />
           <View style={styles.weeklyTipsOverlay}>
@@ -58,54 +254,79 @@ export default function CommunityScreen() {
 
         {/* Category Buttons */}
         <View style={styles.categoryContainer}>
-          <TouchableOpacity style={[styles.categoryButton, styles.activeCategory]}>
-            <Text style={[styles.categoryText, styles.activeCategoryText]}>Feeding</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.categoryButton}>
-            <Text style={styles.categoryText}>Gov Schemes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.categoryButton}>
-            <Text style={styles.categoryText}>Breeds</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.categoryButton}>
-            <Text style={styles.categoryText}>Health</Text>
-          </TouchableOpacity>
+          {tabs.map((tab) => (
+            <TouchableOpacity 
+              key={tab}
+              style={[
+                styles.categoryButton, 
+                activeTab === tab && styles.activeCategory
+              ]}
+              onPress={() => handleTabChange(tab)}
+            >
+              <Text style={[
+                styles.categoryText, 
+                activeTab === tab && styles.activeCategoryText
+              ]}>
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Catch Up With Section */}
+        {/* Dynamic Content Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-              Catch Up With
+              {activeTab} Content
             </ThemedText>
-            <TouchableOpacity>
-              <ThemedText style={styles.showAllText}>Show All</ThemedText>
+            <TouchableOpacity onPress={handleSeeAll}>
+              <ThemedText style={styles.showAllText}>
+                {isExpanded ? 'Show Less' : 'See All'}
+              </ThemedText>
             </TouchableOpacity>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-            <TouchableOpacity style={styles.catchUpCard}>
-              <Image
-                source={{ uri: 'https://via.placeholder.com/120x80/8B4513/FFFFFF?text=Buffalo+Milk' }}
-                style={styles.catchUpImage}
-              />
-              <ThemedText style={styles.catchUpTitle}>
-                My Murrah has low milk yield, what should I feed?
-              </ThemedText>
-              <ThemedText style={styles.catchUpMeta}>⏱️ 6h ago</ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.catchUpCard}>
-              <Image
-                source={{ uri: 'https://via.placeholder.com/120x80/228B22/FFFFFF?text=Vaccination' }}
-                style={styles.catchUpImage}
-              />
-              <ThemedText style={styles.catchUpTitle}>
-                Govt vaccination drive subsidy deadlines.
-              </ThemedText>
-              <ThemedText style={styles.catchUpMeta}>⏱️ 1d ago</ThemedText>
-            </TouchableOpacity>
-          </ScrollView>
+          {isExpanded ? (
+            // Expanded view - show all items in a grid
+            <View style={styles.expandedGrid}>
+              {getCurrentTabData().map((item) => (
+                <TouchableOpacity 
+                  key={item.id}
+                  style={styles.expandedCard}
+                  onPress={() => handleCardPress(item)}
+                >
+                  <Image
+                    source={{ uri: item.image }}
+                    style={styles.expandedImage}
+                  />
+                  <ThemedText style={styles.expandedTitle}>
+                    {item.title}
+                  </ThemedText>
+                  <ThemedText style={styles.expandedMeta}>⏱️ {item.time}</ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            // Collapsed view - horizontal scroll
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+              {getCurrentTabData().slice(0, 3).map((item) => (
+                <TouchableOpacity 
+                  key={item.id}
+                  style={styles.catchUpCard}
+                  onPress={() => handleCardPress(item)}
+                >
+                  <Image
+                    source={{ uri: item.image }}
+                    style={styles.catchUpImage}
+                  />
+                  <ThemedText style={styles.catchUpTitle}>
+                    {item.title}
+                  </ThemedText>
+                  <ThemedText style={styles.catchUpMeta}>⏱️ {item.time}</ThemedText>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
         </View>
 
         {/* Recommended Article Section */}
@@ -114,26 +335,59 @@ export default function CommunityScreen() {
             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
               Recommended Article
             </ThemedText>
-            <TouchableOpacity>
-              <ThemedText style={styles.showAllText}>Show All</ThemedText>
+            <TouchableOpacity onPress={handleRecommendedSeeAll}>
+              <ThemedText style={styles.showAllText}>
+                {isRecommendedExpanded ? 'Show Less' : 'See All'}
+              </ThemedText>
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.recommendedCard}>
-            <Image
-              source={{ uri: 'https://via.placeholder.com/80x60/FF8C00/FFFFFF?text=Weather' }}
-              style={styles.recommendedImage}
-            />
-            <View style={styles.recommendedContent}>
-              <ThemedText style={styles.recommendedTitle}>
-                Weather based advisories
-              </ThemedText>
-              <ThemedText style={styles.recommendedSubtitle}>
-                "Heatwave alert provide shade and water continuously"
-              </ThemedText>
-              <ThemedText style={styles.recommendedMeta}>📖 READ</ThemedText>
+          {isRecommendedExpanded ? (
+            // Expanded view - show all recommended articles
+            <View style={styles.expandedGrid}>
+              {recommendedArticles.map((article) => (
+                <TouchableOpacity 
+                  key={article.id}
+                  style={styles.expandedRecommendedCard}
+                  onPress={() => Alert.alert(article.title, `This would open: ${article.subtitle}`)}
+                >
+                  <Image
+                    source={{ uri: article.image }}
+                    style={styles.expandedRecommendedImage}
+                  />
+                  <View style={styles.expandedRecommendedContent}>
+                    <ThemedText style={styles.expandedRecommendedTitle}>
+                      {article.title}
+                    </ThemedText>
+                    <ThemedText style={styles.expandedRecommendedSubtitle}>
+                      {article.subtitle}
+                    </ThemedText>
+                    <ThemedText style={styles.expandedRecommendedMeta}>READ</ThemedText>
+                  </View>
+                </TouchableOpacity>
+              ))}
             </View>
-          </TouchableOpacity>
+          ) : (
+            // Collapsed view - show only first article
+            <TouchableOpacity 
+              style={styles.recommendedCard}
+              onPress={() => Alert.alert('Weather Advisory', 'This would open the full weather advisory article')}
+            >
+              <Image
+                source={{ uri: recommendedArticles[0].image }}
+                style={styles.recommendedImage}
+              />
+              <View style={styles.recommendedContent}>
+                <ThemedText style={styles.recommendedTitle}>
+                  {recommendedArticles[0].title}
+                </ThemedText>
+                <ThemedText style={styles.recommendedSubtitle}>
+                  {recommendedArticles[0].subtitle}
+                </ThemedText>
+                <ThemedText style={styles.recommendedMeta}>READ</ThemedText>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Bottom spacing for tab bar */}
@@ -383,5 +637,70 @@ const styles = StyleSheet.create({
   },
   activeTabIcon: {
     color: '#ffffff',
+  },
+  // Expanded view styles
+  expandedGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  expandedCard: {
+    width: '48%',
+    backgroundColor: '#2a2a2a',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 12,
+  },
+  expandedImage: {
+    width: '100%',
+    height: 80,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  expandedTitle: {
+    color: '#ffffff',
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 4,
+  },
+  expandedMeta: {
+    color: '#888888',
+    fontSize: 10,
+  },
+  // Expanded recommended articles styles
+  expandedRecommendedCard: {
+    width: '48%',
+    flexDirection: 'row',
+    backgroundColor: '#2a2a2a',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 12,
+  },
+  expandedRecommendedImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  expandedRecommendedContent: {
+    flex: 1,
+  },
+  expandedRecommendedTitle: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  expandedRecommendedSubtitle: {
+    color: '#cccccc',
+    fontSize: 10,
+    lineHeight: 14,
+    marginBottom: 4,
+  },
+  expandedRecommendedMeta: {
+    color: '#007AFF',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
 });

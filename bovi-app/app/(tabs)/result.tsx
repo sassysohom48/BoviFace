@@ -37,6 +37,10 @@ export default function ResultScreen() {
     console.error("Failed to parse predictions:", e);
   }
 
+  // Check if breed is unrecognized (empty predictions or very low confidence)
+  const isUnrecognized = parsedPredictions.length === 0 || 
+    (parsedPredictions.length > 0 && parsedPredictions[0].confidence < 0.3);
+
   // Modal state
   const [selectedBreed, setSelectedBreed] = useState<
     { breed: string; confidence: number } | null
@@ -66,6 +70,22 @@ export default function ResultScreen() {
       console.error("Save failed:", error);
       Alert.alert("Error", `Failed to save analysis: ${message}`);
     }
+  };
+
+  const handleAddBreed = () => {
+    Alert.alert(
+      "Add New Breed",
+      "Would you like to contribute this cattle breed to our database?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Add Breed", 
+          onPress: () => {
+            Alert.alert("Thank You!", "Your contribution will help improve our breed recognition system.");
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -121,33 +141,50 @@ export default function ResultScreen() {
       {/* Predictions */}
       <View style={styles.predictionsSection}>
         <Text style={styles.sectionTitle}>Breed Identification Results</Text>
-        <Text style={styles.subtitle}>Top Predictions</Text>
-
-        {parsedPredictions.map((item, index) => (
-          <View key={index} style={styles.prediction}>
-            <View style={styles.predictionHeader}>
-              <Text style={styles.predictionRank}>#{index + 1}</Text>
-              <Text style={styles.predictionBreed}>{item.breed}</Text>
-            </View>
-            <View style={styles.confidenceBar}>
-              <View
-                style={[
-                  styles.confidenceFill,
-                  { width: `${item.confidence * 100}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.confidenceText}>
-              {(item.confidence * 100).toFixed(1)}% confidence
+        
+        {isUnrecognized ? (
+          <View style={styles.unrecognizedContainer}>
+            <Text style={styles.unrecognizedTitle}>Not recognized? New breed</Text>
+            <Text style={styles.unrecognizedSubtitle}>
+              This cattle breed is not currently in our database.
             </Text>
-            <TouchableOpacity
-              style={styles.infoButton}
-              onPress={() => setSelectedBreed(item)}
+            <TouchableOpacity 
+              style={styles.addBreedButton}
+              onPress={handleAddBreed}
             >
-              <Text style={styles.infoText}>More Info</Text>
+              <Text style={styles.addBreedButtonText}>Add Breed</Text>
             </TouchableOpacity>
           </View>
-        ))}
+        ) : (
+          <>
+            <Text style={styles.subtitle}>Top Predictions</Text>
+            {parsedPredictions.map((item, index) => (
+              <View key={index} style={styles.prediction}>
+                <View style={styles.predictionHeader}>
+                  <Text style={styles.predictionRank}>#{index + 1}</Text>
+                  <Text style={styles.predictionBreed}>{item.breed}</Text>
+                </View>
+                <View style={styles.confidenceBar}>
+                  <View
+                    style={[
+                      styles.confidenceFill,
+                      { width: `${item.confidence * 100}%` },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.confidenceText}>
+                  {(item.confidence * 100).toFixed(1)}% confidence
+                </Text>
+                <TouchableOpacity
+                  style={styles.infoButton}
+                  onPress={() => setSelectedBreed(item)}
+                >
+                  <Text style={styles.infoText}>More Info</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </>
+        )}
       </View>
 
       {/* Actions */}
@@ -352,6 +389,40 @@ const styles = StyleSheet.create({
     borderColor: "#666",
   },
   homeText: { color: "#666", fontSize: 16, textAlign: "center" },
+  unrecognizedContainer: {
+    backgroundColor: "#2a2a2a",
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#4CAF50",
+    alignItems: "center",
+  },
+  unrecognizedTitle: {
+    color: "#4CAF50",
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  unrecognizedSubtitle: {
+    color: "#cccccc",
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  addBreedButton: {
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  addBreedButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",

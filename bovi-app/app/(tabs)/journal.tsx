@@ -49,11 +49,14 @@ export default function JournalScreen() {
 
   const loadAnalyses = async () => {
     try {
+      console.log('=== LOAD ANALYSES DEBUG ===');
       console.log('Loading analyses from storage...');
       const savedAnalyses = await storageService.getAllAnalyses();
       console.log('Loaded analyses:', savedAnalyses);
       console.log('Analyses count:', savedAnalyses.length);
+      console.log('Setting analyses state...');
       setAnalyses(savedAnalyses);
+      console.log('Analyses state updated');
     } catch (error) {
       console.error('Error loading analyses:', error);
     }
@@ -105,6 +108,7 @@ export default function JournalScreen() {
 
   const renderAnalysisItem = ({ item }: { item: SavedAnalysis }) => {
     const topPrediction = item.predictions[0];
+    const isUnrecognized = item.predictions.length === 0;
     
     return (
       <TouchableOpacity
@@ -115,7 +119,7 @@ export default function JournalScreen() {
           <View style={styles.cattleInfo}>
             <Text style={styles.cattleName}>{item.cattleInfo.name}</Text>
             <Text style={styles.cattleDetails}>
-              {item.cattleInfo.age} months • {item.cattleInfo.location || 'Unknown location'}
+              {item.cattleInfo.age} months • {item.cattleInfo.location || 'No location specified'}
             </Text>
           </View>
           <Text style={styles.timestamp}>{formatDate(item.timestamp)}</Text>
@@ -129,18 +133,27 @@ export default function JournalScreen() {
           
           <View style={styles.predictionInfo}>
             <Text style={styles.predictionLabel}>Top Prediction</Text>
-            <Text style={styles.predictionBreed}>{topPrediction.breed}</Text>
-            <View style={styles.confidenceBar}>
-              <View 
-                style={[
-                  styles.confidenceFill, 
-                  { width: `${topPrediction.confidence * 100}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.confidenceText}>
-              {(topPrediction.confidence * 100).toFixed(1)}% confidence
-            </Text>
+            {isUnrecognized ? (
+              <>
+                <Text style={styles.unrecognizedBreed}>Not recognized</Text>
+                <Text style={styles.unrecognizedSubtext}>New breed</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.predictionBreed}>{topPrediction.breed}</Text>
+                <View style={styles.confidenceBar}>
+                  <View 
+                    style={[
+                      styles.confidenceFill, 
+                      { width: `${topPrediction.confidence * 100}%` }
+                    ]} 
+                  />
+                </View>
+                <Text style={styles.confidenceText}>
+                  {(topPrediction.confidence * 100).toFixed(1)}% confidence
+                </Text>
+              </>
+            )}
           </View>
         </View>
 
@@ -151,7 +164,7 @@ export default function JournalScreen() {
             deleteAnalysis(item.id);
           }}
         >
-          <Text style={styles.deleteButtonText}>🗑️</Text>
+          <Text style={styles.deleteButtonText}>Delete</Text>
         </TouchableOpacity>
       </TouchableOpacity>
     );
@@ -409,15 +422,26 @@ const styles = StyleSheet.create({
   },
   confidenceFill: { height: '100%', backgroundColor: '#4CAF50', borderRadius: 3 },
   confidenceText: { fontSize: 12, color: '#cccccc' },
+  unrecognizedBreed: { 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    color: '#ff6b6b',
+    marginBottom: 4,
+  },
+  unrecognizedSubtext: { 
+    fontSize: 12, 
+    color: '#aaaaaa',
+    fontStyle: 'italic',
+  },
   deleteButton: { 
     position: 'absolute', 
-    top: 15, 
-    right: 15, 
-    padding: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
-    width: 36,
-    height: 36,
+    top: '50%',
+    right: 15,
+    marginTop: -15,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#ff4444',
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -427,8 +451,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   deleteButtonText: { 
-    fontSize: 16,
+    fontSize: 12,
     color: 'white',
+    fontWeight: '600',
   },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyIcon: { fontSize: 64, marginBottom: 20 },

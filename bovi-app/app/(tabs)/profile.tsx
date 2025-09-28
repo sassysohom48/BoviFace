@@ -42,14 +42,14 @@ export default function Profile() {
   const router = useRouter();
   const [user, setUser] = useState<UserProfile>({
     id: "1",
-    name: "John Doe",
+    name: "Rama Kanth Yadav",
     email: "john@example.com",
-    phone: "+1234567890",
-    profilePic: "https://i.pravatar.cc/150",
-    farmName: "Green Valley Farm",
-    location: "California, USA",
-    joinDate: "2024-01-15",
-    cattleCount: 12,
+    phone: "+918779345266",
+    profilePic: "https://ui-avatars.com/api/?name=RamaKanth+Yadav&size=150",
+    farmName: "Raunak Farm",
+    location: "Haryana, India",
+    joinDate: "2025-09-11",
+    cattleCount: 10,
     totalAnalyses: 45
   });
 

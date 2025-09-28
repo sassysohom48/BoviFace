@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View, Alert } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -10,10 +10,30 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   async function onSubmit() {
-    if (phone.trim().length < 10) return; // simple client guard
-    setSubmitting(true);
-    router.push('/(auth)/otp');
-    setSubmitting(false);
+    if (phone.trim().length < 10) {
+      Alert.alert('Error', 'Please enter a valid phone number');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // Simulate OTP sending
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      Alert.alert('Success', 'OTP sent! (Demo mode)');
+      
+      // Navigate to OTP screen with phone number
+      router.push({
+        pathname: '/(auth)/otp',
+        params: { phone: phone }
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      Alert.alert('Error', 'Failed to send OTP. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (

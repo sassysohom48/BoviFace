@@ -19,7 +19,21 @@ if str(YV5_DIR) not in sys.path:
 
 # Load YOLOv5 model (custom weights)
 # Using torch.hub with source='local' avoids PyTorch 2.6 safe-unpickling issues
-model = torch.hub.load(str(YV5_DIR), "custom", path=str(Path(__file__).parent / "best_windows.pt"), source="local")
+try:
+    # Try loading best_windows.pt first (known working model)
+    model = torch.hub.load(str(YV5_DIR), "custom", path=str(Path(__file__).parent / "best_windows.pt"), source="local")
+    print("✅ Loaded best_windows.pt successfully")
+except Exception as e:
+    print(f"❌ Failed to load best_windows.pt: {e}")
+    try:
+        # Fallback to best.pt
+        model = torch.hub.load(str(YV5_DIR), "custom", path=str(Path(__file__).parent / "best.pt"), source="local")
+        print("✅ Loaded best.pt as fallback")
+    except Exception as e2:
+        print(f"❌ Failed to load best.pt: {e2}")
+        # Last resort: use default YOLOv5s
+        model = torch.hub.load(str(YV5_DIR), "yolov5s", source="local")
+        print("⚠️ Using default YOLOv5s model")
 model.conf = 0.1   # Lower confidence threshold to catch more detections
 model.iou = 0.45   # NMS IoU threshold
 model.eval()
@@ -29,6 +43,8 @@ print("✅ Model loaded successfully!")
 print("Loaded model classes:", model.names)
 print("Model confidence threshold:", model.conf)
 print("Model IoU threshold:", model.iou)
+print("Model device:", next(model.parameters()).device)
+print("Model type:", type(model))
 
 def run_inference_pil(image: Image.Image):
     """Run YOLOv5 inference on a PIL image and return only the top 1 detection."""
@@ -122,4 +138,5 @@ def health():
     return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)

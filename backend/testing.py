@@ -5,7 +5,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 YV5_DIR = BASE_DIR / "yolov5"
 WEIGHTS_PATH = BASE_DIR / "best_windows.pt"
-TEST_IMG = BASE_DIR / "test.jpg"
+TEST_IMG = BASE_DIR / "runs" / "test.jpg"
 SAVE_DIR = BASE_DIR / "runs"
 
 # Load YOLOv5 model (custom weights)

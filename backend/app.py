@@ -8,88 +8,141 @@ from pathlib import Path
 from PIL import Image
 import requests
 import torch
+import logging
+import time
 
-# Fix PyTorch weights_only issue for ultralytics
-torch.serialization.add_safe_globals(['ultralytics.nn.tasks.DetectionModel'])
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Fix PyTorch weights_only issue - monkey patch torch.load
+original_torch_load = torch.load
+
+def patched_torch_load(f, map_location=None, pickle_module=None, weights_only=None, **kwargs):
+    """Patched torch.load that forces weights_only=False for ultralytics models."""
+    return original_torch_load(f, map_location=map_location, pickle_module=pickle_module, weights_only=False, **kwargs)
+
+torch.load = patched_torch_load
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-# Ensure local yolov5 repo is importable for torch.hub local loading
-YV5_DIR = Path(__file__).resolve().parent / "yolov5"
-if str(YV5_DIR) not in sys.path:
-    sys.path.append(str(YV5_DIR))
+# Set environment variables for better compatibility
+os.environ['MPLCONFIGDIR'] = '/tmp'
+os.environ['TORCH_HOME'] = '/tmp/torch_cache'
 
-# Load YOLOv5 model (custom weights)
-# Use ultralytics YOLO for better compatibility
-try:
-    from ultralytics import YOLO
-    # Try loading custom model first
-    model_path = Path(__file__).parent / "best_windows.pt"
-    if model_path.exists():
-        model = YOLO(str(model_path))
-        print("✅ Loaded best_windows.pt successfully")
-    else:
-        raise FileNotFoundError("best_windows.pt not found")
-except Exception as e:
-    print(f"❌ Failed to load best_windows.pt: {e}")
+# Global model variable
+model = None
+
+def load_model():
+    """Load the YOLOv5 model with error handling and fallbacks."""
+    global model
+    
     try:
-        # Fallback to best.pt
-        model_path = Path(__file__).parent / "best.pt"
+        from ultralytics import YOLO
+        logger.info("Starting model loading...")
+        
+        # Temporarily disable weights_only for model loading
+        original_weights_only = getattr(torch, '_C', {}).get('_set_weights_only_unpickler_enabled', None)
+        
+        # Try loading custom model first
+        model_path = Path(__file__).parent / "best_windows.pt"
         if model_path.exists():
-            model = YOLO(str(model_path))
-            print("✅ Loaded best.pt as fallback")
+            logger.info(f"Loading custom model: {model_path}")
+            try:
+                # Load with weights_only=False explicitly
+                model = YOLO(str(model_path))
+                logger.info("✅ Loaded best_windows.pt successfully")
+            except Exception as e1:
+                logger.warning(f"Failed to load best_windows.pt: {e1}")
+                raise e1
         else:
-            raise FileNotFoundError("best.pt not found")
-    except Exception as e2:
-        print(f"❌ Failed to load best.pt: {e2}")
-        # Last resort: use default YOLOv5s
-        model = YOLO('yolov5s.pt')
-        print("⚠️ Using default YOLOv5s model")
-model.conf = 0.1   # Lower confidence threshold to catch more detections
-model.iou = 0.45   # NMS IoU threshold
-model.eval()
+            logger.warning("best_windows.pt not found, trying best.pt")
+            # Fallback to best.pt
+            model_path = Path(__file__).parent / "best.pt"
+            if model_path.exists():
+                logger.info(f"Loading fallback model: {model_path}")
+                try:
+                    model = YOLO(str(model_path))
+                    logger.info("✅ Loaded best.pt as fallback")
+                except Exception as e2:
+                    logger.warning(f"Failed to load best.pt: {e2}")
+                    raise e2
+            else:
+                logger.warning("best.pt not found, using default YOLOv5s")
+                # Last resort: use default YOLOv5s
+                try:
+                    model = YOLO('yolov5s.pt')
+                    logger.info("⚠️ Using default YOLOv5s model")
+                except Exception as e3:
+                    logger.error(f"Failed to load default model: {e3}")
+                    # If all else fails, return None
+                    return False
+        
+        # Configure model
+        model.conf = 0.1   # Lower confidence threshold to catch more detections
+        model.iou = 0.45   # NMS IoU threshold
+        
+        # Print model info
+        logger.info("✅ Model loaded successfully!")
+        logger.info(f"Loaded model classes: {model.names}")
+        logger.info(f"Model confidence threshold: {model.conf}")
+        logger.info(f"Model IoU threshold: {model.iou}")
+        logger.info(f"Model type: {type(model)}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to load any model: {e}")
+        logger.info("Service will start without model - all inference requests will fail")
+        return False
 
-# Print model classes for debugging
-print("✅ Model loaded successfully!")
-print("Loaded model classes:", model.names)
-print("Model confidence threshold:", model.conf)
-print("Model IoU threshold:", model.iou)
-print("Model device:", next(model.parameters()).device)
-print("Model type:", type(model))
+# Load model on startup
+model_loaded = load_model()
+if not model_loaded:
+    logger.error("Failed to load any model. Service may not work properly.")
 
 def run_inference_pil(image: Image.Image):
     """Run YOLOv5 inference on a PIL image and return only the top 1 detection."""
-    print(f"Running inference on image of size: {image.size}")
+    if model is None:
+        logger.error("Model not loaded!")
+        return []
     
-    # Run inference with ultralytics YOLO
-    results = model(image)
-    
-    # Get the first result
-    result = results[0]
-    
-    # Debug: Print what we detected
-    print(f"Detected {len(result.boxes)} objects")
-    
-    if len(result.boxes) > 0:
-        # Get the top detection (highest confidence)
-        top_box = result.boxes[0]
+    try:
+        logger.info(f"Running inference on image of size: {image.size}")
         
-        detection = {
-            "xmin": float(top_box.xyxy[0][0]),
-            "ymin": float(top_box.xyxy[0][1]),
-            "xmax": float(top_box.xyxy[0][2]),
-            "ymax": float(top_box.xyxy[0][3]),
-            "confidence": float(top_box.conf[0]),
-            "class": int(top_box.cls[0]),
-            "name": model.names[int(top_box.cls[0])],
-        }
+        # Run inference with ultralytics YOLO
+        results = model(image)
         
-        print(f"Top prediction: {detection['name']} (confidence: {detection['confidence']:.3f})")
-        return [detection]  # Return as list for consistency
-    else:
-        print("No detections found!")
-        return []  # Return empty list if no detections
+        # Get the first result
+        result = results[0]
+        
+        # Debug: Print what we detected
+        logger.info(f"Detected {len(result.boxes)} objects")
+        
+        if len(result.boxes) > 0:
+            # Get the top detection (highest confidence)
+            top_box = result.boxes[0]
+            
+            detection = {
+                "xmin": float(top_box.xyxy[0][0]),
+                "ymin": float(top_box.xyxy[0][1]),
+                "xmax": float(top_box.xyxy[0][2]),
+                "ymax": float(top_box.xyxy[0][3]),
+                "confidence": float(top_box.conf[0]),
+                "class": int(top_box.cls[0]),
+                "name": model.names[int(top_box.cls[0])],
+            }
+            
+            logger.info(f"Top prediction: {detection['name']} (confidence: {detection['confidence']:.3f})")
+            return [detection]  # Return as list for consistency
+        else:
+            logger.info("No detections found!")
+            return []  # Return empty list if no detections
+            
+    except Exception as e:
+        logger.error(f"Error during inference: {e}")
+        return []
 
 @app.route("/detect", methods=["POST"])
 def detect():
@@ -143,7 +196,20 @@ def detect():
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok"})
+    """Health check endpoint."""
+    if model is None:
+        return jsonify({"status": "error", "message": "Model not loaded"}), 503
+    return jsonify({"status": "ok", "model_loaded": True})
+
+@app.route("/", methods=["GET"])
+def root():
+    """Root endpoint."""
+    return jsonify({
+        "message": "BoviFace Backend API",
+        "status": "running",
+        "model_loaded": model is not None,
+        "endpoints": ["/detect", "/health"]
+    })
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
